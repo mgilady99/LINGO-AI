@@ -6,7 +6,7 @@ import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeSce
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
 import AudioVisualizer from './components/AudioVisualizer';
-import TranscriptItem from './components/TranscriptItem';
+import transcriptitem from './components/transcriptitem';
 
 const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
