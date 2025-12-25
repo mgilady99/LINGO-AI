@@ -6,6 +6,7 @@ import { decode, decodeAudioData, createPcmBlob } from './services/audioService'
 import Avatar from './components/Avatar';
 import AudioVisualizer from './components/AudioVisualizer';
 import transcriptitem from './components/transcriptitem'; 
+
 const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
@@ -18,23 +19,29 @@ const App: React.FC = () => {
   const [transcript, setTranscript] = useState<TranscriptionEntry[]>([]);
   const [interimUserText, setInterimUserText] = useState('');
   const [interimModelText, setInterimModelText] = useState('');
+
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const isMutedRef = useRef(isMuted);
   const currentInputTranscription = useRef('');
   const currentOutputTranscription = useRef('');
+
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript, interimUserText, interimModelText]);
-  // --- הקוד שביקשת לשתול לבדיקת המפתח ---
+
+  // בדיקת מפתח ממוקדת ל-Vite
   useEffect(() => {
     const checkKey = () => {
-      // הדרך הרשמית והיחידה של Vite לחשוף משתנים
+      // משיכת המפתח מהסביבה של Vite
       const envKey = import.meta.env.VITE_API_KEY;
-      console.log("Checking API Key existence...")
-      if (envKey && envKey.length > 5) { // בדיקה שיש תוכן אמיתי
+      
+      console.log("System Check: VITE_API_KEY value is:", envKey ? "Found (masked)" : "NOT FOUND");
+      
+      if (envKey && envKey.length > 10) {
         setHasKey(true);
       } else {
         setHasKey(false);
@@ -42,7 +49,6 @@ const App: React.FC = () => {
     };
     checkKey();
   }, []);
-  // ---------------------------------------
 
   const handleSelectKey = async () => {
     // @ts-ignore
@@ -50,9 +56,8 @@ const App: React.FC = () => {
       await window.aistudio.openSelectKey();
       const exists = await window.aistudio.hasSelectedApiKey();
       setHasKey(exists);
-      setError(null);
     } else {
-      setError("API Key not found. Please set VITE_API_KEY in Cloudflare Settings.");
+      setError("API Key Missing. Please check Cloudflare Environment Variables (VITE_API_KEY).");
     }
   };
 
@@ -72,9 +77,7 @@ const App: React.FC = () => {
       micStreamRef.current.getTracks().forEach(track => track.stop());
       micStreamRef.current = null;
     }
-    sourcesRef.current.forEach(source => {
-      try { source.stop(); } catch (e) {}
-    });
+    sourcesRef.current.forEach(source => { try { source.stop(); } catch (e) {} });
     sourcesRef.current.clear();
     setStatus(ConnectionStatus.DISCONNECTED);
     setIsSpeaking(false);
@@ -86,7 +89,6 @@ const App: React.FC = () => {
   }, []);
 
   const startConversation = async () => {
-    // שימוש באותו משתנה של Vite גם כאן
     const apiKey = import.meta.env.VITE_API_KEY;
     
     if (!apiKey) {
@@ -97,7 +99,6 @@ const App: React.FC = () => {
     try {
       setError(null);
       setStatus(ConnectionStatus.CONNECTING);
-      
       const ai = new GoogleGenAI({ apiKey });
       
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
@@ -115,11 +116,11 @@ const App: React.FC = () => {
 
       let systemInstruction = "";
       if (selectedScenario.id === 'simultaneous') {
-        systemInstruction = `STRICT OPERATING MODE: SIMULTANEOUS INTERPRETER. SOURCE: ${nativeLang.name}. TARGET: ${targetLang.name}.`;
+        systemInstruction = `STRICT OPERATING MODE: SIMULTANEOUS INTERPRETER.`;
       } else if (selectedScenario.id === 'translator') {
-        systemInstruction = `ROLE: DIALOGUE TRANSLATOR. LANGUAGES: ${nativeLang.name} and ${targetLang.name}.`;
+        systemInstruction = `ROLE: DIALOGUE TRANSLATOR.`;
       } else {
-        systemInstruction = `ROLE: CHAT PARTNER. TARGET LANGUAGE: ${targetLang.name}.`;
+        systemInstruction = `ROLE: CHAT PARTNER.`;
       }
       
       const sessionPromise = ai.live.connect({
@@ -150,7 +151,6 @@ const App: React.FC = () => {
               currentOutputTranscription.current += m.serverContent.outputTranscription.text;
               setInterimModelText(currentOutputTranscription.current);
             }
-
             if (m.serverContent?.turnComplete) {
               setTranscript(prev => {
                 const newEntries: TranscriptionEntry[] = [...prev];
@@ -163,7 +163,6 @@ const App: React.FC = () => {
               setInterimUserText('');
               setInterimModelText('');
             }
-
             const audioData = m.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audioData) {
               setIsSpeaking(true);
@@ -180,16 +179,9 @@ const App: React.FC = () => {
               nextStartTimeRef.current += buffer.duration;
               sourcesRef.current.add(source);
             }
-
-            if (m.serverContent?.interrupted) {
-              sourcesRef.current.forEach(s => { try { s.stop(); } catch (e) {} });
-              sourcesRef.current.clear();
-              nextStartTimeRef.current = 0;
-              setIsSpeaking(false);
-            }
           },
           onerror: () => { 
-            setError('Connection failed. Please check your API key.');
+            setError('Connection failed. Check API Key.');
             stopConversation(); 
           },
           onclose: () => setStatus(ConnectionStatus.DISCONNECTED)
@@ -225,8 +217,8 @@ const App: React.FC = () => {
            </div>
         </div>
         <div className="flex items-center gap-2">
-           <button onClick={() => setTranscript([])} className="p-2.5 text-slate-500 hover:text-white transition-colors" title="Clear History"><Trash2 size={18} /></button>
-           <button onClick={handleSelectKey} className="p-2.5 text-slate-500 hover:text-white bg-slate-800/50 rounded-lg transition-colors" title="Refresh Key"><RefreshCw size={18} /></button>
+           <button onClick={() => setTranscript([])} className="p-2.5 text-slate-500 hover:text-white transition-colors"><Trash2 size={18} /></button>
+           <button onClick={handleSelectKey} className="p-2.5 text-slate-500 hover:text-white bg-slate-800/50 rounded-lg transition-colors"><RefreshCw size={18} /></button>
            {status === ConnectionStatus.CONNECTED && (
              <button onClick={stopConversation} className="bg-red-500/20 text-red-400 p-2.5 rounded-lg border border-red-500/20"><XCircle size={18} /></button>
            )}
@@ -234,86 +226,29 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto scrollbar-thin">
-          <div className="w-full bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-xl">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Language Pair</label>
-              <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <select 
-                    value={nativeLang.code} 
-                    onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
-                    disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
-                  >
-                    {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-                  </select>
-                </div>
-                <div className="flex flex-col justify-center items-center text-indigo-500">
-                  <ChevronRight size={16} />
-                </div>
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <select 
-                    value={targetLang.code} 
-                    onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
-                    disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
-                  >
-                    {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {SCENARIOS.map(s => (
-                <button 
-                  key={s.id} 
-                  onClick={() => setSelectedScenario(s)} 
-                  disabled={status !== ConnectionStatus.DISCONNECTED}
-                  className={`py-3 px-2 rounded-2xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white border border-indigo-400 shadow-lg' : 'bg-slate-800/40 text-slate-500 border border-transparent hover:bg-slate-800'}`}
-                >
-                  <span className="text-2xl">{s.icon}</span>
-                  <span className="text-[10px] font-black uppercase tracking-tighter">{s.title}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto">
           <div className="flex flex-col items-center justify-center gap-6 py-4">
             <Avatar state={status !== ConnectionStatus.CONNECTED ? 'idle' : isSpeaking ? 'speaking' : isMuted ? 'thinking' : 'listening'} />
-            <div className="text-center px-4">
-               <h2 className="text-xl font-black text-white">{selectedScenario.title}</h2>
-               <p className="text-indigo-400 text-[10px] font-black uppercase tracking-widest mt-1">{selectedScenario.description}</p>
-            </div>
-            
             <div className="w-full flex justify-center">
               {status === ConnectionStatus.CONNECTED ? (
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setIsMuted(!isMuted)} className={`p-5 rounded-full border-2 transition-all ${isMuted ? 'bg-red-500 border-red-400' : 'bg-slate-800 border-slate-700'}`}>
+                  <button onClick={() => setIsMuted(!isMuted)} className={`p-5 rounded-full border-2 ${isMuted ? 'bg-red-500' : 'bg-slate-800'}`}>
                     {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
                   </button>
                   <button onClick={stopConversation} className="bg-white text-slate-950 px-8 py-4 rounded-full font-black text-sm uppercase">Stop Session</button>
                 </div>
               ) : (
-                <button 
-                  onClick={startConversation} 
-                  className="bg-indigo-600 px-10 py-5 rounded-full font-black flex items-center gap-3 text-lg shadow-2xl hover:bg-indigo-500 transition-all"
-                >
+                <button onClick={startConversation} className="bg-indigo-600 px-10 py-5 rounded-full font-black flex items-center gap-3 text-lg shadow-2xl hover:bg-indigo-500 transition-all">
                   <Mic size={24} /> START SESSION
                 </button>
               )}
             </div>
-            {(isSpeaking || (status === ConnectionStatus.CONNECTED && !isMuted)) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
-          {error && <div className="text-red-400 text-xs font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center flex items-center gap-2 justify-center"><AlertCircle size={14} /> {error}</div>}
+          {error && <div className="text-red-400 text-xs font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center"><AlertCircle size={14} className="inline mr-1" /> {error}</div>}
         </div>
 
         <div className="flex-1 flex flex-col bg-slate-950 p-4 md:p-8 overflow-hidden">
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">Live Feed</h3>
-            <span className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 font-bold">{transcript.length} Logs</span>
-          </div>
-          <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col gap-2 pr-2">
+          <div className="flex-1 overflow-y-auto flex flex-col gap-2">
             {transcript.map((entry, idx) => <transcriptitem key={idx} entry={entry} />)}
             {interimUserText && <transcriptitem entry={{role: 'user', text: interimUserText, timestamp: new Date()}} />}
             {interimModelText && <transcriptitem entry={{role: 'model', text: interimModelText, timestamp: new Date()}} />}
