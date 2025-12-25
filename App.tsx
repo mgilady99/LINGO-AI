@@ -5,7 +5,7 @@ import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeSce
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
 import AudioVisualizer from './components/AudioVisualizer';
-import transcriptitem from './components/transcriptitem'; // שורה 10 - נשאר קטן
+import transcriptitem from './components/transcriptitem'; 
 
 const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
@@ -35,13 +35,18 @@ const App: React.FC = () => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript, interimUserText, interimModelText]);
 
+  // --- קטע הקוד החדש לבדיקת המפתח ---
   useEffect(() => {
     const checkKey = async () => {
-      const envKey = process.env.API_KEY;
+      // בדיקה רחבה: מנסה למצוא את המפתח בכמה מקומות אפשריים (Cloudflare, Vite, process.env)
+      const envKey = (import.meta as any).env?.API_KEY || (process as any).env?.API_KEY;
+      
       if (envKey && envKey !== 'undefined' && envKey !== '') {
         setHasKey(true);
         return;
       }
+      
+      // בדיקה מול הכלי של AI Studio אם הוא מוזרק לדפדפן
       // @ts-ignore
       if (window.aistudio?.hasSelectedApiKey) {
         const exists = await window.aistudio.hasSelectedApiKey();
@@ -50,10 +55,12 @@ const App: React.FC = () => {
         setHasKey(false);
       }
     };
+
     checkKey();
     const interval = setInterval(checkKey, 2000);
     return () => clearInterval(interval);
   }, []);
+  // --------------------------------
 
   const handleSelectKey = async () => {
     // @ts-ignore
@@ -62,7 +69,7 @@ const App: React.FC = () => {
       setHasKey(true);
       setError(null);
     } else {
-      setError("API Key not found. Please set it in your environment.");
+      setError("API Key not found. Please set it in your Cloudflare environment variables.");
     }
   };
 
@@ -96,7 +103,9 @@ const App: React.FC = () => {
   }, []);
 
   const startConversation = async () => {
-    const apiKey = process.env.API_KEY;
+    // משיכת המפתח בזמן אמת מהסביבה
+    const apiKey = (import.meta as any).env?.API_KEY || (process as any).env?.API_KEY;
+    
     if (!apiKey || apiKey === 'undefined' || apiKey === '') {
       handleSelectKey();
       return;
@@ -124,26 +133,17 @@ const App: React.FC = () => {
       let systemInstruction = "";
       
       if (selectedScenario.id === 'simultaneous') {
-        systemInstruction = `STRICT OPERATING MODE: SIMULTANEOUS INTERPRETER.
-        SOURCE: ${nativeLang.name}. TARGET: ${targetLang.name}.
-        RULE: TRANSLATE IMMEDIATELY. DO NOT WAIT FOR PAUSES.
-        OUTPUT ONLY THE TRANSLATION. NO CONVERSATION.`;
+        systemInstruction = `STRICT OPERATING MODE: SIMULTANEOUS INTERPRETER. SOURCE: ${nativeLang.name}. TARGET: ${targetLang.name}. RULE: TRANSLATE IMMEDIATELY.`;
       } else if (selectedScenario.id === 'translator') {
-        systemInstruction = `ROLE: DIALOGUE TRANSLATOR.
-        LANGUAGES: ${nativeLang.name} and ${targetLang.name}.
-        RULE: Wait for the user to finish speaking, then translate the full sentence accurately.`;
+        systemInstruction = `ROLE: DIALOGUE TRANSLATOR. LANGUAGES: ${nativeLang.name} and ${targetLang.name}.`;
       } else if (selectedScenario.id === 'casual') {
-        systemInstruction = `ROLE: CHAT PARTNER.
-        TARGET LANGUAGE: ${targetLang.name}.
-        RULE: Speak naturally ONLY in ${targetLang.name}. If the user speaks ${nativeLang.name}, help them but keep the focus on ${targetLang.name}.`;
+        systemInstruction = `ROLE: CHAT PARTNER. TARGET LANGUAGE: ${targetLang.name}.`;
       } else if (selectedScenario.id === 'learn') {
-        systemInstruction = `ROLE: LANGUAGE TEACHER.
-        TARGET LANGUAGE: ${targetLang.name}. NATIVE LANGUAGE: ${nativeLang.name}.
-        RULE: Help the user improve their ${targetLang.name}. Give corrections in brackets [Correction: ...] in your transcription output.`;
+        systemInstruction = `ROLE: LANGUAGE TEACHER. TARGET LANGUAGE: ${targetLang.name}. NATIVE LANGUAGE: ${nativeLang.name}.`;
       }
       
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        model: 'gemini-2.0-flash-exp', // וודא שזה המודל העדכני שאתה משתמש בו
         callbacks: {
           onopen: () => {
             setStatus(ConnectionStatus.CONNECTED);
@@ -163,13 +163,11 @@ const App: React.FC = () => {
           },
           onmessage: async (m: LiveServerMessage) => {
             if (m.serverContent?.inputTranscription) {
-              const text = m.serverContent.inputTranscription.text;
-              currentInputTranscription.current += text;
+              currentInputTranscription.current += m.serverContent.inputTranscription.text;
               setInterimUserText(currentInputTranscription.current);
             }
             if (m.serverContent?.outputTranscription) {
-              const text = m.serverContent.outputTranscription.text;
-              currentOutputTranscription.current += text;
+              currentOutputTranscription.current += m.serverContent.outputTranscription.text;
               setInterimModelText(currentOutputTranscription.current);
             }
 
@@ -179,12 +177,8 @@ const App: React.FC = () => {
 
               setTranscript(prev => {
                 const newEntries: TranscriptionEntry[] = [...prev];
-                if (userText) {
-                  newEntries.push({ role: 'user', text: userText, timestamp: new Date() });
-                }
-                if (modelText) {
-                  newEntries.push({ role: 'model', text: modelText, timestamp: new Date() });
-                }
+                if (userText) newEntries.push({ role: 'user', text: userText, timestamp: new Date() });
+                if (modelText) newEntries.push({ role: 'model', text: modelText, timestamp: new Date() });
                 return newEntries;
               });
 
@@ -348,15 +342,9 @@ const App: React.FC = () => {
             <span className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 font-bold">{transcript.length} Logs</span>
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col gap-2 pr-2">
-            {/* שינוי 1: אותיות קטנות כאן */}
             {transcript.map((entry, idx) => <transcriptitem key={idx} entry={entry} />)}
-            
-            {/* שינוי 2: אותיות קטנות כאן */}
             {interimUserText && <transcriptitem entry={{role: 'user', text: interimUserText, timestamp: new Date()}} />}
-            
-            {/* שינוי 3: אותיות קטנות כאן */}
             {interimModelText && <transcriptitem entry={{role: 'model', text: interimModelText, timestamp: new Date()}} />}
-            
             {transcript.length === 0 && !interimUserText && (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-40 italic text-sm text-center">
                 <p className="mb-2 font-bold text-white/50">Listening for your voice...</p>
