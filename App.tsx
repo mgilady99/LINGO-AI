@@ -33,14 +33,15 @@ const App: React.FC = () => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript, interimUserText, interimModelText]);
 
-  // בדיקת מפתח לפי הלוגיקה המוצלחת מהגרסה הפשוטה
+  // זיהוי מפתח מהסביבה של Vite
   useEffect(() => {
     const checkKey = () => {
-      const envKey = import.meta.env.VITE_API_KEY;
+      // ניסיון משיכה ישיר של המפתח שהזרקנו ב-Build Command
+      const apiKey = import.meta.env.VITE_API_KEY;
       
-      console.log("System Check: VITE_API_KEY value is:", envKey ? "Found" : "NOT FOUND");
+      console.log("API Key Detection:", apiKey ? "Detected" : "NOT_AVAILABLE");
       
-      if (envKey && envKey.length > 5) {
+      if (apiKey && apiKey.length > 10) {
         setHasKey(true);
       } else {
         setHasKey(false);
@@ -56,7 +57,7 @@ const App: React.FC = () => {
       const exists = await window.aistudio.hasSelectedApiKey();
       setHasKey(exists);
     } else {
-      setError("API Key Missing. Please check Cloudflare Settings (VITE_API_KEY).");
+      setError("Please ensure VITE_API_KEY is defined in Cloudflare Variables and Redeploy.");
     }
   };
 
@@ -89,6 +90,7 @@ const App: React.FC = () => {
 
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
+    
     if (!apiKey) {
       handleSelectKey();
       return;
@@ -123,7 +125,9 @@ const App: React.FC = () => {
               const inputData = e.inputBuffer.getChannelData(0).slice();
               const pcmBlob = createPcmBlob(inputData);
               sessionPromise.then(s => {
-                if (!isMutedRef.current && s) s.sendRealtimeInput({ media: pcmBlob });
+                if (!isMutedRef.current && s) {
+                  s.sendRealtimeInput({ media: pcmBlob });
+                }
               });
             };
             source.connect(scriptProcessor);
@@ -166,16 +170,23 @@ const App: React.FC = () => {
               nextStartTimeRef.current += buffer.duration;
               sourcesRef.current.add(source);
             }
+            if (m.serverContent?.interrupted) {
+              sourcesRef.current.forEach(s => { try { s.stop(); } catch (e) {} });
+              sourcesRef.current.clear();
+              nextStartTimeRef.current = 0;
+              setIsSpeaking(false);
+            }
           },
-          onerror: () => { 
-            setError('Connection failed. Check API Key.');
+          onerror: (e) => { 
+            console.error("Session Error:", e);
+            setError('Connection failed. Please check API Key.');
             stopConversation(); 
           },
           onclose: () => setStatus(ConnectionStatus.DISCONNECTED)
         },
         config: { 
           responseModalities: [Modality.AUDIO], 
-          systemInstruction: "You are a helpful assistant.",
+          systemInstruction: "You are a helpful translation assistant.",
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } }
@@ -183,6 +194,7 @@ const App: React.FC = () => {
       });
       activeSessionRef.current = await sessionPromise;
     } catch (e: any) { 
+      console.error("Start Error:", e);
       setError('Connection failed.'); 
       setStatus(ConnectionStatus.ERROR); 
     }
@@ -198,13 +210,14 @@ const App: React.FC = () => {
            <div className="flex flex-col text-left">
              <div className="flex items-center gap-2">
                <span className="font-black text-sm uppercase text-white">LingoLive Pro</span>
+               <span className="text-[8px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-bold">v1.2.0</span>
              </div>
              <span className={`text-[10px] font-black uppercase ${status === 'CONNECTED' ? 'text-emerald-400' : 'text-slate-400'}`}>{status}</span>
            </div>
         </div>
         <div className="flex items-center gap-2">
-           <button onClick={() => setTranscript([])} className="p-2.5 text-slate-500 hover:text-white transition-colors"><Trash2 size={18} /></button>
-           <button onClick={handleSelectKey} className="p-2.5 text-slate-500 hover:text-white bg-slate-800/50 rounded-lg transition-colors"><RefreshCw size={18} /></button>
+           <button onClick={() => setTranscript([])} className="p-2.5 text-slate-500 hover:text-white transition-colors" title="Clear History"><Trash2 size={18} /></button>
+           <button onClick={handleSelectKey} className="p-2.5 text-slate-500 hover:text-white bg-slate-800/50 rounded-lg transition-colors" title="Refresh Key"><RefreshCw size={18} /></button>
            {status === ConnectionStatus.CONNECTED && (
              <button onClick={stopConversation} className="bg-red-500/20 text-red-400 p-2.5 rounded-lg border border-red-500/20"><XCircle size={18} /></button>
            )}
@@ -212,27 +225,38 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto">
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Language Pair</label>
-            <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
-               <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold w-full text-center">
+        <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto scrollbar-thin">
+          {/* פאנל שליטה ושפות */}
+          <div className="w-full bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-xl">
+             <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
+               <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center w-full">
                  {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                </select>
                <ChevronRight size={16} className="text-indigo-500" />
-               <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold w-full text-center">
+               <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center w-full">
                  {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                </select>
-            </div>
+             </div>
           </div>
+
           <div className="flex flex-col items-center justify-center gap-6 py-4">
             <Avatar state={status !== ConnectionStatus.CONNECTED ? 'idle' : isSpeaking ? 'speaking' : isMuted ? 'thinking' : 'listening'} />
-            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className={`px-10 py-5 rounded-full font-black text-lg shadow-2xl transition-all ${status === ConnectionStatus.CONNECTED ? 'bg-white text-slate-950' : 'bg-indigo-600 text-white'}`}>
-              <Mic size={24} className="inline mr-2" /> {status === ConnectionStatus.CONNECTED ? 'STOP SESSION' : 'START SESSION'}
-            </button>
-            {(isSpeaking || (status === ConnectionStatus.CONNECTED && !isMuted)) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
+            <div className="w-full flex justify-center">
+              {status === ConnectionStatus.CONNECTED ? (
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setIsMuted(!isMuted)} className={`p-5 rounded-full border-2 ${isMuted ? 'bg-red-500' : 'bg-slate-800'}`}>
+                    {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+                  </button>
+                  <button onClick={stopConversation} className="bg-white text-slate-950 px-8 py-4 rounded-full font-black text-sm uppercase">Stop Session</button>
+                </div>
+              ) : (
+                <button onClick={startConversation} className="bg-indigo-600 px-10 py-5 rounded-full font-black flex items-center gap-3 text-lg shadow-2xl hover:bg-indigo-500 transition-all">
+                  <Mic size={24} /> START SESSION
+                </button>
+              )}
+            </div>
           </div>
-          {error && <div className="text-red-400 text-xs font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center"><AlertCircle size={14} className="inline mr-1" /> {error}</div>}
+          {error && <div className="text-red-400 text-xs font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center flex items-center gap-2 justify-center"><AlertCircle size={14} /> {error}</div>}
         </div>
 
         <div className="flex-1 flex flex-col bg-slate-950 p-4 md:p-8 overflow-hidden">
