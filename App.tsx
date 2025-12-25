@@ -7,7 +7,6 @@ import Avatar from './components/Avatar';
 import AudioVisualizer from './components/AudioVisualizer';
 import transcriptitem from './components/transcriptitem'; 
 
-// מילון תרגום UI רחב לכל השפות הנתמכות
 const uiTranslations: Record<string, any> = {
   'en-US': { title: 'LingoLive Pro', pair: 'Language Pair', from: 'From', to: 'To', start: 'START', stop: 'STOP', feed: 'Live Feed', logs: 'Logs', scenarios: { simultaneous: 'LIVE TRANSLATE', translator: 'Ongoing Translation', casual: 'CHAT', learn: 'LEARN' } },
   'he-IL': { title: 'לינגו-לייב פרו', pair: 'צמד שפות', from: 'מ-', to: 'ל-', start: 'התחל', stop: 'עצור', feed: 'תמלול חי', logs: 'לוגים', scenarios: { simultaneous: 'תרגום חי', translator: 'תרגום רציף', casual: 'צ׳אט', learn: 'למידה' } },
@@ -83,13 +82,14 @@ const App: React.FC = () => {
       const outputNode = outputCtx.createGain();
       outputNode.connect(outputCtx.destination);
 
+      // הוראות קצרות משפרות את מהירות התגובה בשפות שאינן אנגלית
       let sysInst = "";
       if (selectedScenario.id === 'simultaneous' || selectedScenario.id === 'translator') {
-        sysInst = `ACT AS A FAST SIMULTANEOUS INTERPRETER. Translate ${nativeLang.name} <-> ${targetLang.name} INSTANTLY. Never repeat the source language. No talk, only translation.`;
+        sysInst = `FAST INTERPRETER: ${nativeLang.name} <-> ${targetLang.name}. No repeat. Translate instantly.`;
       } else if (selectedScenario.id === 'casual') {
-        sysInst = `Chat partner. Speak ONLY in ${targetLang.name}.`;
+        sysInst = `Speak ONLY ${targetLang.name}.`;
       } else {
-        sysInst = `Language tutor in ${targetLang.name}. Speak ${targetLang.name} and provide corrections in brackets.`;
+        sysInst = `Tutor in ${targetLang.name}. Brief corrections.`;
       }
 
       const sessionPromise = ai.live.connect({
@@ -98,7 +98,6 @@ const App: React.FC = () => {
           onopen: () => {
             setStatus(ConnectionStatus.CONNECTED);
             const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
-            // הקטנת BUFFER ל-2048 למהירות מקסימלית
             const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0).slice();
@@ -137,8 +136,10 @@ const App: React.FC = () => {
         config: { 
           responseModalities: [Modality.AUDIO], 
           systemInstruction: sysInst,
-          generationConfig: { temperature: 0.5 }, // האצת המודל
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
+          generationConfig: { temperature: 0.3 }, // הנמכה נוספת לטובת מהירות תגובה
+          speechConfig: { 
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } }
+          }
         }
       });
       activeSessionRef.current = await sessionPromise;
