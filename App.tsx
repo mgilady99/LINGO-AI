@@ -6,7 +6,6 @@ import { decode, decodeAudioData, createPcmBlob } from './services/audioService'
 import Avatar from './components/Avatar';
 import AudioVisualizer from './components/AudioVisualizer';
 import transcriptitem from './components/transcriptitem'; 
-
 const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
@@ -17,32 +16,24 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptionEntry[]>([]);
-  
   const [interimUserText, setInterimUserText] = useState('');
   const [interimModelText, setInterimModelText] = useState('');
-
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const isMutedRef = useRef(isMuted);
-  
   const currentInputTranscription = useRef('');
   const currentOutputTranscription = useRef('');
-
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
-
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript, interimUserText, interimModelText]);
-
   // --- הקוד שביקשת לשתול לבדיקת המפתח ---
   useEffect(() => {
     const checkKey = () => {
       // הדרך הרשמית והיחידה של Vite לחשוף משתנים
       const envKey = import.meta.env.VITE_API_KEY;
-      
-      console.log("Checking API Key existence..."); // זה יעזור לך ב-Console של הדפדפן (F12)
-      
+      console.log("Checking API Key existence...")
       if (envKey && envKey.length > 5) { // בדיקה שיש תוכן אמיתי
         setHasKey(true);
       } else {
