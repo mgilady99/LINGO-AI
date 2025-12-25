@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Mic, MicOff, Headphones, XCircle, ChevronRight, RefreshCw, Trash2, AlertCircle } from 'lucide-react';
@@ -63,7 +62,7 @@ const App: React.FC = () => {
       setHasKey(true);
       setError(null);
     } else {
-      setError("Please set the API_KEY in your environment variables.");
+      setError("API Key not found. Please set it in your environment or via the Studio key selector.");
     }
   };
 
@@ -96,7 +95,7 @@ const App: React.FC = () => {
 
   const startConversation = async () => {
     const apiKey = process.env.API_KEY;
-    if (!apiKey || apiKey === 'undefined') {
+    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
       handleSelectKey();
       return;
     }
@@ -123,28 +122,29 @@ const App: React.FC = () => {
       let systemInstruction = "";
       
       if (selectedScenario.id === 'simultaneous') {
-        systemInstruction = `STRICT MODE: SIMULTANEOUS INTERPRETER.
-        FROM: ${nativeLang.name} TO: ${targetLang.name}.
-        RULE 1: Translate IMMEDIATELY. Do not wait for silence.
-        RULE 2: Output ONLY the translated audio and text in ${targetLang.name}.
-        RULE 3: Do not reply or chat. Be a live feed interpreter.`;
+        systemInstruction = `STRICT OPERATING MODE: SIMULTANEOUS INTERPRETER.
+        FROM: ${nativeLang.name}. TO: ${targetLang.name}.
+        RULE 1: Translate EVERYTHING immediately. Do not wait for pauses.
+        RULE 2: Output ONLY the translation. No chatter. No responses.
+        RULE 3: Act as a real-time headset. Accuracy and speed are top priority.`;
       } else if (selectedScenario.id === 'translator') {
-        systemInstruction = `STRICT MODE: DIALOGUE TRANSLATOR.
+        systemInstruction = `ROLE: DIALOGUE TRANSLATOR.
         LANGUAGES: ${nativeLang.name} and ${targetLang.name}.
-        RULE 1: Wait for a complete sentence or pause before translating.
-        RULE 2: Translate between ${nativeLang.name} and ${targetLang.name}.
-        RULE 3: Only output the translation. No conversation.`;
+        RULE 1: Wait for a complete sentence before translating.
+        RULE 2: Translate between ${nativeLang.name} and ${targetLang.name} based on which one the user is speaking.
+        RULE 3: Be precise and clear.`;
       } else if (selectedScenario.id === 'casual') {
-        systemInstruction = `STRICT MODE: CHAT PARTNER.
+        systemInstruction = `ROLE: FRIENDLY LANGUAGE PARTNER.
         TARGET LANGUAGE: ${targetLang.name}.
-        RULE 1: Talk naturally ONLY in ${targetLang.name}.
-        RULE 2: If user speaks ${nativeLang.name}, encourage them to switch back to ${targetLang.name}.`;
+        RULE 1: Speak naturally only in ${targetLang.name}.
+        RULE 2: Encourage the user. Do not translate unless they ask.
+        RULE 3: If the user speaks ${nativeLang.name}, gently guide them back to ${targetLang.name}.`;
       } else if (selectedScenario.id === 'learn') {
-        systemInstruction = `STRICT MODE: LANGUAGE TEACHER.
+        systemInstruction = `ROLE: LANGUAGE TUTOR (ZEPHYR).
         TARGET LANGUAGE: ${targetLang.name}. NATIVE LANGUAGE: ${nativeLang.name}.
-        RULE 1: Always speak in ${targetLang.name}.
-        RULE 2: Provide corrections in brackets [Correction: ...] if user makes mistakes.
-        RULE 3: Guide the user to improve their ${targetLang.name}.`;
+        RULE 1: Speak primarily in ${targetLang.name}.
+        RULE 2: Listen for errors. Provide corrections in the transcription output as [Correction: ...].
+        RULE 3: Explain complex grammar in ${nativeLang.name} only when needed.`;
       }
       
       const sessionPromise = ai.live.connect({
@@ -224,7 +224,7 @@ const App: React.FC = () => {
             }
           },
           onerror: (e: any) => { 
-            setError('Connection failed. Check API key.');
+            setError('The connection was interrupted. Please check your network and API key.');
             stopConversation(); 
           },
           onclose: () => setStatus(ConnectionStatus.DISCONNECTED)
@@ -239,43 +239,46 @@ const App: React.FC = () => {
       });
       activeSessionRef.current = await sessionPromise;
     } catch (e: any) { 
-      setError('Error connecting.'); 
+      setError('Connection failed. Ensure your API key is valid and you have granted microphone access.'); 
       setStatus(ConnectionStatus.ERROR); 
     }
   };
 
+  if (hasKey === null) return <div className="h-screen bg-slate-950 flex items-center justify-center"><div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
+
   return (
-    <div className="h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden font-['Inter']">
+    <div className="h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden font-['Inter'] safe-area-inset">
       <header className="p-4 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-2xl shrink-0 z-50">
         <div className="flex items-center gap-3">
            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg"><Headphones size={20} /></div>
            <div className="flex flex-col text-left">
              <span className="font-black text-sm tracking-tight uppercase">LingoLive Pro</span>
-             <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">{status}</span>
+             <span className={`text-[10px] font-black uppercase tracking-widest ${status === 'CONNECTED' ? 'text-emerald-400' : 'text-slate-400'}`}>{status}</span>
            </div>
         </div>
         <div className="flex items-center gap-2">
            <button onClick={() => setTranscript([])} className="p-2.5 text-slate-500 hover:text-white transition-colors" title="Clear History"><Trash2 size={18} /></button>
-           <button onClick={handleSelectKey} className="p-2.5 text-slate-500 hover:text-white bg-slate-800/50 rounded-lg transition-colors"><RefreshCw size={18} /></button>
+           <button onClick={handleSelectKey} className="p-2.5 text-slate-500 hover:text-white bg-slate-800/50 rounded-lg transition-colors" title="Settings"><RefreshCw size={18} /></button>
            {status === ConnectionStatus.CONNECTED && (
-             <button onClick={stopConversation} className="bg-red-500/20 text-red-400 p-2.5 rounded-lg border border-red-500/20"><XCircle size={18} /></button>
+             <button onClick={stopConversation} className="bg-red-500/20 text-red-400 p-2.5 rounded-lg border border-red-500/20 hover:bg-red-500/30 transition-all"><XCircle size={18} /></button>
            )}
         </div>
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Settings Sidebar */}
         <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto scrollbar-thin">
           <div className="w-full bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-xl">
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Language Setup</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Language Configuration</label>
               <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <span className="text-[8px] text-center text-slate-400 font-black mb-1 uppercase">Native</span>
+                  <span className="text-[8px] text-center text-slate-400 font-black mb-1 uppercase">Source</span>
                   <select 
                     value={nativeLang.code} 
                     onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
                     disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-sm md:text-lg font-bold text-center appearance-none cursor-pointer outline-none w-full"
+                    className="bg-slate-900 border-none rounded-xl py-2 text-sm md:text-lg font-bold text-center appearance-none cursor-pointer outline-none w-full hover:bg-slate-800 transition-colors"
                   >
                     {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                   </select>
@@ -290,7 +293,7 @@ const App: React.FC = () => {
                     value={targetLang.code} 
                     onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
                     disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-sm md:text-lg font-bold text-center appearance-none cursor-pointer outline-none w-full"
+                    className="bg-slate-900 border-none rounded-xl py-2 text-sm md:text-lg font-bold text-center appearance-none cursor-pointer outline-none w-full hover:bg-slate-800 transition-colors"
                   >
                     {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                   </select>
@@ -323,10 +326,10 @@ const App: React.FC = () => {
             <div className="w-full flex justify-center">
               {status === ConnectionStatus.CONNECTED ? (
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setIsMuted(!isMuted)} className={`p-5 rounded-full border-2 ${isMuted ? 'bg-red-500 border-red-400' : 'bg-slate-800 border-slate-700'}`}>
+                  <button onClick={() => setIsMuted(!isMuted)} className={`p-5 rounded-full border-2 transition-all ${isMuted ? 'bg-red-500 border-red-400' : 'bg-slate-800 border-slate-700 active:scale-95'}`}>
                     {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
                   </button>
-                  <button onClick={stopConversation} className="bg-white text-slate-950 px-8 py-4 rounded-full font-black text-sm uppercase">Stop Session</button>
+                  <button onClick={stopConversation} className="bg-white text-slate-950 px-8 py-4 rounded-full font-black text-sm uppercase hover:bg-slate-200 transition-all active:scale-95">Stop Session</button>
                 </div>
               ) : (
                 <button 
@@ -343,9 +346,10 @@ const App: React.FC = () => {
           {error && <div className="text-red-400 text-xs font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center flex items-center gap-2 justify-center"><AlertCircle size={14} /> {error}</div>}
         </div>
 
+        {/* Transcript Section */}
         <div className="flex-1 flex flex-col bg-slate-950 p-4 md:p-8 overflow-hidden">
           <div className="flex items-center justify-between mb-4 px-2">
-            <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">Live Transcript</h3>
+            <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">Live Feed</h3>
             <span className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 font-bold">{transcript.length} Logs</span>
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col gap-2 pr-2">
@@ -364,11 +368,11 @@ const App: React.FC = () => {
 
             {transcript.length === 0 && !interimUserText && !interimModelText && (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-40 italic text-sm text-center max-w-xs mx-auto">
-                <p className="mb-2 font-bold">Waiting for input...</p>
+                <p className="mb-2 font-bold">Waiting for your voice...</p>
                 <p className="text-xs">
                   {selectedScenario.id === 'simultaneous' 
-                    ? `Simultaneous interpretation enabled. Speak freely in ${nativeLang.name}.`
-                    : `Speak in ${nativeLang.name} or ${targetLang.name} to begin.`}
+                    ? `Simultaneous interpretation enabled. Speak in ${nativeLang.name} and I'll translate instantly to ${targetLang.name}.`
+                    : `Switch to ${selectedScenario.title} mode and speak to start. Listening for ${nativeLang.name} and ${targetLang.name}.`}
                 </p>
               </div>
             )}
