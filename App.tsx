@@ -7,23 +7,15 @@ import Avatar from './components/Avatar';
 import AudioVisualizer from './components/AudioVisualizer';
 import transcriptitem from './components/transcriptitem'; 
 
-// מילון תרגום דינמי לכל השפות הנתמכות
-const getLocalizedUI = (langCode: string) => {
-  const dicts: Record<string, any> = {
-    'en-US': { title: 'LingoLive Pro', pair: 'Language Pair', from: 'From', to: 'To', start: 'START', stop: 'STOP', feed: 'Live Feed', logs: 'Logs', ongoing: 'Ongoing Translation' },
-    'he-IL': { title: 'לינגו-לייב פרו', pair: 'צמד שפות', from: 'מ-', to: 'ל-', start: 'התחל', stop: 'עצור', feed: 'תמלול חי', logs: 'לוגים', ongoing: 'תרגום רציף' },
-    'es-ES': { title: 'LingoLive Pro', pair: 'Par de idiomas', from: 'De', to: 'A', start: 'INICIAR', stop: 'PARAR', feed: 'Traducción', logs: 'Logs', ongoing: 'Traducción continua' },
-    'fr-FR': { title: 'LingoLive Pro', pair: 'Paire de langues', from: 'De', to: 'À', start: 'DÉMARRER', stop: 'ARRÊTER', feed: 'Direct', logs: 'Logs', ongoing: 'Traduction continue' },
-    'de-DE': { title: 'LingoLive Pro', pair: 'Sprachpaar', from: 'Von', to: 'Nach', start: 'STARTEN', stop: 'STOPPEN', feed: 'Live-Feed', logs: 'Logs', ongoing: 'Laufende Übersetzung' },
-    'ar-XA': { title: 'لينغو لايف برو', pair: 'زوج اللغات', from: 'من', to: 'إلى', start: 'بدء', stop: 'إيقاف', feed: 'البث المباشر', logs: 'سجلات', ongoing: 'ترجمة مستمرة' },
-    'zh-CN': { title: 'LingoLive 专业版', pair: '语言配对', from: '从', to: '到', start: '开始', stop: '停止', feed: '实时流', logs: '日志', ongoing: '持续翻译' },
-    'ja-JP': { title: 'LingoLive プロ', pair: '言語ペア', from: 'から', to: 'まで', start: '開始', stop: '停止', feed: 'ライブ', logs: 'ログ', ongoing: '継続翻訳' },
-    'ko-KR': { title: 'LingoLive 프로', pair: '언어 쌍', from: '에서', to: '으로', start: '시작', stop: '중지', feed: '라이브 피드', logs: '기록', ongoing: '지속적인 번역' },
-    'it-IT': { title: 'LingoLive Pro', pair: 'Coppia di lingue', from: 'Da', to: 'A', start: 'AVVIA', stop: 'FERMA', feed: 'Live Feed', logs: 'Log', ongoing: 'Traduzione continua' },
-    'pt-BR': { title: 'LingoLive Pro', pair: 'Par de idiomas', from: 'De', to: 'Para', start: 'INICIAR', stop: 'PARAR', feed: 'Feed ao vivo', logs: 'Logs', ongoing: 'Tradução contínua' },
-    'hi-IN': { title: 'लिंगोलाइव प्रो', pair: 'भाषा जोड़ी', from: 'से', to: 'तक', start: 'शुरू करें', stop: 'बंद करें', feed: 'लाइव फीड', logs: 'लॉग', ongoing: 'निरंतर अनुवाद' }
-  };
-  return dicts[langCode] || dicts['en-US'];
+// מילון תרגום UI רחב לכל השפות הנתמכות
+const uiTranslations: Record<string, any> = {
+  'en-US': { title: 'LingoLive Pro', pair: 'Language Pair', from: 'From', to: 'To', start: 'START', stop: 'STOP', feed: 'Live Feed', logs: 'Logs', scenarios: { simultaneous: 'LIVE TRANSLATE', translator: 'Ongoing Translation', casual: 'CHAT', learn: 'LEARN' } },
+  'he-IL': { title: 'לינגו-לייב פרו', pair: 'צמד שפות', from: 'מ-', to: 'ל-', start: 'התחל', stop: 'עצור', feed: 'תמלול חי', logs: 'לוגים', scenarios: { simultaneous: 'תרגום חי', translator: 'תרגום רציף', casual: 'צ׳אט', learn: 'למידה' } },
+  'ar-XA': { title: 'لينغو لايف برو', pair: 'زوج اللغات', from: 'من', to: 'إلى', start: 'بدء', stop: 'إيقاف', feed: 'البث المباشر', logs: 'سجلات', scenarios: { simultaneous: 'ترجمة فورية', translator: 'ترجمة مستمرة', casual: 'دردشة', learn: 'تعلم' } },
+  'fr-FR': { title: 'LingoLive Pro', pair: 'Paire de langues', from: 'De', to: 'À', start: 'DÉMARRER', stop: 'ARRÊTER', feed: 'Direct', logs: 'Logs', scenarios: { simultaneous: 'TRADUCTION LIVE', translator: 'Traduction Continue', casual: 'CHAT', learn: 'APPRENDRE' } },
+  'de-DE': { title: 'LingoLive Pro', pair: 'Sprachpaar', from: 'Von', to: 'Nach', start: 'STARTEN', stop: 'STOPPEN', feed: 'Live-Feed', logs: 'Logs', scenarios: { simultaneous: 'LIVE-ÜBERSETZUNG', translator: 'Laufende Übersetzung', casual: 'CHAT', learn: 'LERNEN' } },
+  'es-ES': { title: 'LingoLive Pro', pair: 'Par de idiomas', from: 'De', to: 'A', start: 'INICIAR', stop: 'PARAR', feed: 'Traducción', logs: 'Logs', scenarios: { simultaneous: 'TRADUCCIÓN EN VIVO', translator: 'Traducción Continua', casual: 'CHAT', learn: 'APRENDER' } },
+  'zh-CN': { title: 'LingoLive 专业版', pair: '语言配对', from: '从', to: '到', start: '开始', stop: '停止', feed: '实时流', logs: '日志', scenarios: { simultaneous: '实时翻译', translator: '持续翻译', casual: '聊天', learn: '学习' } }
 };
 
 const App: React.FC = () => {
@@ -39,7 +31,7 @@ const App: React.FC = () => {
   const [interimUserText, setInterimUserText] = useState('');
   const [interimModelText, setInterimModelText] = useState('');
 
-  const ui = getLocalizedUI(nativeLang.code);
+  const ui = uiTranslations[nativeLang.code] || uiTranslations['en-US'];
   const isRTL = nativeLang.code === 'he-IL' || nativeLang.code === 'ar-XA';
 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -67,6 +59,8 @@ const App: React.FC = () => {
     sourcesRef.current.clear();
     setStatus(ConnectionStatus.DISCONNECTED);
     setIsSpeaking(false);
+    setInterimUserText('');
+    setInterimModelText('');
   }, []);
 
   const startConversation = async () => {
@@ -89,18 +83,14 @@ const App: React.FC = () => {
       const outputNode = outputCtx.createGain();
       outputNode.connect(outputCtx.destination);
 
-      // הנחיות תרגום דו-כיווניות קשיחות
-      let sysInst = `
-        STRICT SIMULTANEOUS INTERPRETER MODE.
-        LANGUAGES: ${nativeLang.name} <-> ${targetLang.name}.
-        1. If you hear ${nativeLang.name}, translate to ${targetLang.name}.
-        2. If you hear ${targetLang.name}, translate to ${nativeLang.name}.
-        3. Never repeat the source language.
-        4. Translate immediately in real-time.
-      `;
-      
-      if (selectedScenario.id === 'casual') sysInst = `Chat in ${targetLang.name} only.`;
-      if (selectedScenario.id === 'learn') sysInst = `Tutor in ${targetLang.name}. Correct my grammar/pronunciation in brackets.`;
+      let sysInst = "";
+      if (selectedScenario.id === 'simultaneous' || selectedScenario.id === 'translator') {
+        sysInst = `ACT AS A FAST SIMULTANEOUS INTERPRETER. Translate ${nativeLang.name} <-> ${targetLang.name} INSTANTLY. Never repeat the source language. No talk, only translation.`;
+      } else if (selectedScenario.id === 'casual') {
+        sysInst = `Chat partner. Speak ONLY in ${targetLang.name}.`;
+      } else {
+        sysInst = `Language tutor in ${targetLang.name}. Speak ${targetLang.name} and provide corrections in brackets.`;
+      }
 
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.0-flash-exp',
@@ -108,7 +98,8 @@ const App: React.FC = () => {
           onopen: () => {
             setStatus(ConnectionStatus.CONNECTED);
             const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
-            const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
+            // הקטנת BUFFER ל-2048 למהירות מקסימלית
+            const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0).slice();
               if (!isMuted && activeSessionRef.current) {
@@ -119,16 +110,14 @@ const App: React.FC = () => {
             scriptProcessor.connect(inputAudioContextRef.current!.destination);
           },
           onmessage: async (m: LiveServerMessage) => {
-            if (m.serverContent?.inputTranscription) {
-              setInterimUserText(prev => prev + m.serverContent!.inputTranscription!.text);
-            }
-            if (m.serverContent?.outputTranscription) {
-              setInterimModelText(prev => prev + m.serverContent!.outputTranscription!.text);
-            }
+            if (m.serverContent?.inputTranscription) setInterimUserText(prev => prev + m.serverContent!.inputTranscription!.text);
+            if (m.serverContent?.outputTranscription) setInterimModelText(prev => prev + m.serverContent!.outputTranscription!.text);
+            
             if (m.serverContent?.turnComplete) {
               setTranscript(prev => [...prev, { role: 'user', text: interimUserText, timestamp: new Date() }, { role: 'model', text: interimModelText, timestamp: new Date() }]);
               setInterimUserText(''); setInterimModelText('');
             }
+
             const audioData = m.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audioData) {
               setIsSpeaking(true);
@@ -142,17 +131,18 @@ const App: React.FC = () => {
               sourcesRef.current.add(source);
             }
           },
-          onerror: (e) => { setError('Connection failed'); stopConversation(); },
+          onerror: () => { setError('Error'); stopConversation(); },
           onclose: () => setStatus(ConnectionStatus.DISCONNECTED)
         },
         config: { 
           responseModalities: [Modality.AUDIO], 
           systemInstruction: sysInst,
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } } // קול נשי צעיר
+          generationConfig: { temperature: 0.5 }, // האצת המודל
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
         }
       });
       activeSessionRef.current = await sessionPromise;
-    } catch (e) { setError('Failed to start.'); setStatus(ConnectionStatus.ERROR); }
+    } catch (e) { setError('Start failed'); setStatus(ConnectionStatus.ERROR); }
   };
 
   if (hasKey === null) return <div className="h-screen bg-slate-950 flex items-center justify-center"><div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -194,8 +184,8 @@ const App: React.FC = () => {
             
             <div className="grid grid-cols-2 gap-3">
               {SCENARIOS.map(s => (
-                <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-5 px-2 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-500'}`}>
-                  <span className="text-xl">{s.icon}</span>
+                <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-6 px-2 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-500'}`}>
+                  <span className="text-2xl">{s.icon}</span>
                   <span className="font-black uppercase tracking-tighter text-center leading-none text-sm">
                     {s.id === 'translator' ? ui.ongoing : ui.scenarios?.[s.id] || s.title}
                   </span>
@@ -204,9 +194,9 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center gap-6">
+          <div className="flex flex-col items-center justify-center gap-6 py-4">
             <Avatar state={status !== ConnectionStatus.CONNECTED ? 'idle' : isSpeaking ? 'speaking' : isMuted ? 'thinking' : 'listening'} />
-            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className="bg-indigo-600 px-10 py-5 rounded-full font-black text-lg shadow-xl flex items-center gap-3 hover:bg-indigo-500 transition-all">
+            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className="bg-indigo-600 px-10 py-5 rounded-full font-black text-lg shadow-xl flex items-center gap-3 hover:bg-indigo-500">
               <Mic size={24} /> {status === ConnectionStatus.CONNECTED ? ui.stop : ui.start}
             </button>
             {(isSpeaking || (status === ConnectionStatus.CONNECTED && !isMuted)) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
