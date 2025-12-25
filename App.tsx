@@ -33,15 +33,11 @@ const App: React.FC = () => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript, interimUserText, interimModelText]);
 
-  // זיהוי מפתח מהסביבה של Vite
+  // בדיקת מפתח מול Vite - נשאר כפי שעבד לנו
   useEffect(() => {
     const checkKey = () => {
-      // ניסיון משיכה ישיר של המפתח שהזרקנו ב-Build Command
       const apiKey = import.meta.env.VITE_API_KEY;
-      
-      console.log("API Key Detection:", apiKey ? "Detected" : "NOT_AVAILABLE");
-      
-      if (apiKey && apiKey.length > 10) {
+      if (apiKey && apiKey.length > 5) {
         setHasKey(true);
       } else {
         setHasKey(false);
@@ -57,7 +53,7 @@ const App: React.FC = () => {
       const exists = await window.aistudio.hasSelectedApiKey();
       setHasKey(exists);
     } else {
-      setError("Please ensure VITE_API_KEY is defined in Cloudflare Variables and Redeploy.");
+      setError("Please ensure VITE_API_KEY is set in Cloudflare Settings.");
     }
   };
 
@@ -90,11 +86,7 @@ const App: React.FC = () => {
 
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
-    
-    if (!apiKey) {
-      handleSelectKey();
-      return;
-    }
+    if (!apiKey) { handleSelectKey(); return; }
 
     try {
       setError(null);
@@ -114,6 +106,18 @@ const App: React.FC = () => {
       const outputNode = outputCtx.createGain();
       outputNode.connect(outputCtx.destination);
 
+      // לוגיקה למודולים השונים - כאן אנחנו מחזירים את ההוראות למודל לפי המודול שנבחר
+      let systemInstruction = "";
+      if (selectedScenario.id === 'simultaneous') {
+        systemInstruction = `ROLE: SIMULTANEOUS INTERPRETER. Translate from ${nativeLang.name} to ${targetLang.name} immediately.`;
+      } else if (selectedScenario.id === 'translator') {
+        systemInstruction = `ROLE: DIALOGUE TRANSLATOR between ${nativeLang.name} and ${targetLang.name}.`;
+      } else if (selectedScenario.id === 'casual') {
+        systemInstruction = `ROLE: CHAT PARTNER in ${targetLang.name}.`;
+      } else if (selectedScenario.id === 'learn') {
+        systemInstruction = `ROLE: LANGUAGE TEACHER for ${targetLang.name}. Give corrections.`;
+      }
+      
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.0-flash-exp',
         callbacks: {
@@ -124,11 +128,7 @@ const App: React.FC = () => {
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0).slice();
               const pcmBlob = createPcmBlob(inputData);
-              sessionPromise.then(s => {
-                if (!isMutedRef.current && s) {
-                  s.sendRealtimeInput({ media: pcmBlob });
-                }
-              });
+              sessionPromise.then(s => { if (!isMutedRef.current && s) s.sendRealtimeInput({ media: pcmBlob }); });
             };
             source.connect(scriptProcessor);
             scriptProcessor.connect(inputAudioContextRef.current!.destination);
@@ -162,42 +162,25 @@ const App: React.FC = () => {
               const source = outputCtx.createBufferSource();
               source.buffer = buffer;
               source.connect(outputNode);
-              source.onended = () => { 
-                sourcesRef.current.delete(source); 
-                if (sourcesRef.current.size === 0) setIsSpeaking(false); 
-              };
+              source.onended = () => { sourcesRef.current.delete(source); if (sourcesRef.current.size === 0) setIsSpeaking(false); };
               source.start(nextStartTimeRef.current);
               nextStartTimeRef.current += buffer.duration;
               sourcesRef.current.add(source);
             }
-            if (m.serverContent?.interrupted) {
-              sourcesRef.current.forEach(s => { try { s.stop(); } catch (e) {} });
-              sourcesRef.current.clear();
-              nextStartTimeRef.current = 0;
-              setIsSpeaking(false);
-            }
           },
-          onerror: (e) => { 
-            console.error("Session Error:", e);
-            setError('Connection failed. Please check API Key.');
-            stopConversation(); 
-          },
+          onerror: () => { setError('Connection failed.'); stopConversation(); },
           onclose: () => setStatus(ConnectionStatus.DISCONNECTED)
         },
         config: { 
           responseModalities: [Modality.AUDIO], 
-          systemInstruction: "You are a helpful translation assistant.",
+          systemInstruction,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } }
         }
       });
       activeSessionRef.current = await sessionPromise;
-    } catch (e: any) { 
-      console.error("Start Error:", e);
-      setError('Connection failed.'); 
-      setStatus(ConnectionStatus.ERROR); 
-    }
+    } catch (e: any) { setError('Connection failed.'); setStatus(ConnectionStatus.ERROR); }
   };
 
   if (hasKey === null) return <div className="h-screen bg-slate-950 flex items-center justify-center"><div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -225,45 +208,99 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Sidebar - כאן נמצאים מודולי השפה והתרגום */}
         <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto scrollbar-thin">
-          {/* פאנל שליטה ושפות */}
           <div className="w-full bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-xl">
-             <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
-               <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center w-full">
-                 {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-               </select>
-               <ChevronRight size={16} className="text-indigo-500" />
-               <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center w-full">
-                 {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-               </select>
-             </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Language Pair</label>
+              <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <select 
+                    value={nativeLang.code} 
+                    onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
+                    disabled={status !== ConnectionStatus.DISCONNECTED}
+                    className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
+                  >
+                    {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col justify-center items-center text-indigo-500">
+                  <ChevronRight size={16} />
+                </div>
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <select 
+                    value={targetLang.code} 
+                    onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
+                    disabled={status !== ConnectionStatus.DISCONNECTED}
+                    className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
+                  >
+                    {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            {/* Scenarios - המודולים השונים (צ'אט, למידה וכו') */}
+            <div className="grid grid-cols-2 gap-2">
+              {SCENARIOS.map(s => (
+                <button 
+                  key={s.id} 
+                  onClick={() => setSelectedScenario(s)} 
+                  disabled={status !== ConnectionStatus.DISCONNECTED}
+                  className={`py-3 px-2 rounded-2xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white border border-indigo-400 shadow-lg' : 'bg-slate-800/40 text-slate-500 border border-transparent hover:bg-slate-800'}`}
+                >
+                  <span className="text-2xl">{s.icon}</span>
+                  <span className="text-[10px] font-black uppercase tracking-tighter">{s.title}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-col items-center justify-center gap-6 py-4">
             <Avatar state={status !== ConnectionStatus.CONNECTED ? 'idle' : isSpeaking ? 'speaking' : isMuted ? 'thinking' : 'listening'} />
+            <div className="text-center px-4">
+               <h2 className="text-xl font-black text-white">{selectedScenario.title}</h2>
+               <p className="text-indigo-400 text-[10px] font-black uppercase tracking-widest mt-1">{selectedScenario.description}</p>
+            </div>
+            
             <div className="w-full flex justify-center">
               {status === ConnectionStatus.CONNECTED ? (
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setIsMuted(!isMuted)} className={`p-5 rounded-full border-2 ${isMuted ? 'bg-red-500' : 'bg-slate-800'}`}>
+                  <button onClick={() => setIsMuted(!isMuted)} className={`p-5 rounded-full border-2 transition-all ${isMuted ? 'bg-red-500 border-red-400' : 'bg-slate-800 border-slate-700'}`}>
                     {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
                   </button>
-                  <button onClick={stopConversation} className="bg-white text-slate-950 px-8 py-4 rounded-full font-black text-sm uppercase">Stop Session</button>
+                  <button onClick={stopConversation} className="bg-white text-slate-950 px-8 py-4 rounded-full font-black text-sm uppercase shadow-xl hover:scale-105 transition-transform">Stop Session</button>
                 </div>
               ) : (
-                <button onClick={startConversation} className="bg-indigo-600 px-10 py-5 rounded-full font-black flex items-center gap-3 text-lg shadow-2xl hover:bg-indigo-500 transition-all">
+                <button 
+                  onClick={startConversation} 
+                  className="bg-indigo-600 px-10 py-5 rounded-full font-black flex items-center gap-3 text-lg shadow-2xl hover:bg-indigo-500 hover:scale-105 transition-all"
+                >
                   <Mic size={24} /> START SESSION
                 </button>
               )}
             </div>
+            {(isSpeaking || (status === ConnectionStatus.CONNECTED && !isMuted)) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
           {error && <div className="text-red-400 text-xs font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20 text-center flex items-center gap-2 justify-center"><AlertCircle size={14} /> {error}</div>}
         </div>
 
+        {/* Live Feed Area - האזור הימני של התמלול */}
         <div className="flex-1 flex flex-col bg-slate-950 p-4 md:p-8 overflow-hidden">
-          <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+          <div className="flex items-center justify-between mb-4 px-2">
+            <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em]">Live Feed</h3>
+            <span className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 font-bold">{transcript.length} Logs</span>
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col gap-2 pr-2">
             {transcript.map((entry, idx) => <transcriptitem key={idx} entry={entry} />)}
             {interimUserText && <transcriptitem entry={{role: 'user', text: interimUserText, timestamp: new Date()}} />}
             {interimModelText && <transcriptitem entry={{role: 'model', text: interimModelText, timestamp: new Date()}} />}
+            {transcript.length === 0 && !interimUserText && (
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-40 italic text-sm text-center">
+                <p className="mb-2 font-bold text-white/50">Listening for your voice...</p>
+                <p className="text-xs">Start speaking to see the transcript here.</p>
+              </div>
+            )}
             <div ref={transcriptEndRef} />
           </div>
         </div>
