@@ -42,10 +42,10 @@ export interface PracticeScenario {
 }
 
 export const SCENARIOS: PracticeScenario[] = [
-  { id: 'simultaneous', title: 'LIVE TRANSLATE', description: 'Real-time simultaneous interpretation (No waiting).', icon: '⚡' },
-  { id: 'translator', title: 'DIALOGUE', description: 'Two-way translation (Waits for full sentences).', icon: '🔄' },
-  { id: 'casual', title: 'CHAT', description: 'Conversation practice in the selected language.', icon: '💬' },
-  { id: 'learn', title: 'LEARN', description: 'Practice with real-time grammar corrections.', icon: '🎓' },
+  { id: 'simultaneous', title: 'LIVE TRANSLATE', description: 'Real-time simultaneous interpretation (Instant).', icon: '⚡' },
+  { id: 'translator', title: 'DIALOGUE', description: 'Wait for sentence completion before translating.', icon: '🔄' },
+  { id: 'casual', title: 'CHAT', description: 'Practice natural conversation in your target language.', icon: '💬' },
+  { id: 'learn', title: 'LEARN', description: 'Practice with real-time feedback and corrections.', icon: '🎓' },
 ];
 
 export interface TranscriptionEntry {
@@ -54,5 +54,3 @@ export interface TranscriptionEntry {
   correction?: string;
   timestamp: Date;
 }
-
-
