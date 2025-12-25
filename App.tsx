@@ -115,25 +115,31 @@ const App: React.FC = () => {
       const outputNode = outputCtx.createGain();
       outputNode.connect(outputCtx.destination);
 
-      // DYNAMIC SYSTEM INSTRUCTIONS BASED ON SCENARIO
+      // STRICTER DYNAMIC SYSTEM INSTRUCTIONS
       let systemInstruction = "";
       
       if (selectedScenario.id === 'translator') {
-        systemInstruction = `You are a professional bidirectional real-time translator between ${nativeLang.name} and ${targetLang.name}.
-        - If you hear ${nativeLang.name}, translate it immediately to ${targetLang.name} and speak the translation.
-        - If you hear ${targetLang.name}, translate it immediately to ${nativeLang.name} and speak the translation.
-        - DO NOT engage in conversation. DO NOT say "Here is the translation". Just say the translated text.
-        - Keep the tone and context of the original speaker.`;
+        systemInstruction = `CRITICAL OPERATING MODE: REAL-TIME BI-DIRECTIONAL TRANSLATOR.
+        LANGUAGES: ${nativeLang.name} and ${targetLang.name}.
+        
+        STRICT RULES:
+        1. IF INPUT IS IN ${nativeLang.name} -> OUTPUT ONLY THE TRANSLATION TO ${targetLang.name}.
+        2. IF INPUT IS IN ${targetLang.name} -> OUTPUT ONLY THE TRANSLATION TO ${nativeLang.name}.
+        3. DO NOT REPLY. DO NOT CHAT. DO NOT SAY "HELLO". DO NOT SAY "HERE IS THE TRANSLATION".
+        4. ONLY EMIT THE TRANSLATED TEXT AS AUDIO AND TRANSCRIPTION.
+        5. IF THE INPUT IS UNINTELLIGIBLE, REMAIN SILENT.
+        6. MAINTAIN THE EXACT EMOTION AND TONE OF THE ORIGINAL SPEAKER.`;
       } else {
-        systemInstruction = `You are Zephyr, a world-class language tutor. 
-        - CURRENT FOCUS: Helping the user practice ${targetLang.name}. 
-        - USER NATIVE LANGUAGE: ${nativeLang.name}.
-        - SCENARIO: ${selectedScenario.title}. 
-        - RULES:
-          1. Respond primarily in ${targetLang.name}.
-          2. If the user makes a mistake in ${targetLang.name}, gently provide the corrected version in the transcription text.
-          3. If the user speaks in ${nativeLang.name} because they are stuck, translate for them and encourage them to repeat in ${targetLang.name}.
-          4. Be encouraging, patient, and use sophisticated but accessible vocabulary.`;
+        systemInstruction = `ROLE: LANGUAGE TUTOR (ZEPHYR).
+        TARGET LANGUAGE: ${targetLang.name}.
+        USER NATIVE LANGUAGE: ${nativeLang.name}.
+        SCENARIO: ${selectedScenario.title}.
+        
+        RULES:
+        1. ALWAYS RESPOND IN ${targetLang.name} FIRST.
+        2. IF THE USER SPEAKS IN ${nativeLang.name}, TRANSLATE THEIR MESSAGE TO ${targetLang.name} IN THE TRANSCRIPTION AND ANSWER THEM IN ${targetLang.name}.
+        3. IF THE USER MAKES A GRAMMAR MISTAKE IN ${targetLang.name}, PROVIDE THE CORRECTED VERSION IN BRACKETS [Correction: ...] AT THE END OF YOUR TRANSCRIPTION.
+        4. BE ENCOURAGING AND KEEP THE CONVERSATION FLOWING.`;
       }
       
       const sessionPromise = ai.live.connect({
@@ -264,27 +270,30 @@ const App: React.FC = () => {
         <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto scrollbar-thin">
           <div className="w-full bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-xl">
             <div className="flex flex-col gap-1 mb-2 px-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Language Settings</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Language Pair</label>
               <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
                 <div className="flex flex-col flex-1">
-                  <span className="text-[8px] text-center text-slate-500 font-bold mb-1">TARGET</span>
-                  <select 
-                    value={targetLang.code} 
-                    onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
-                    disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-lg font-bold text-center appearance-none cursor-pointer"
-                  >
-                    {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-                  </select>
-                </div>
-                <ChevronRight size={20} className="text-slate-600 mt-4" />
-                <div className="flex flex-col flex-1">
-                  <span className="text-[8px] text-center text-slate-500 font-bold mb-1">NATIVE</span>
+                  <span className="text-[8px] text-center text-slate-400 font-black mb-1">YOUR NATIVE</span>
                   <select 
                     value={nativeLang.code} 
                     onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
                     disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-lg font-bold text-center appearance-none cursor-pointer"
+                    className="bg-slate-900 border-none rounded-xl py-2 text-lg font-bold text-center appearance-none cursor-pointer hover:bg-slate-800 transition-colors"
+                  >
+                    {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col justify-center items-center mt-3">
+                  <ChevronRight size={16} className="text-indigo-500" />
+                  <ChevronRight size={16} className="text-indigo-500 -mt-2 rotate-180" />
+                </div>
+                <div className="flex flex-col flex-1">
+                  <span className="text-[8px] text-center text-slate-400 font-black mb-1">TARGET/STUDY</span>
+                  <select 
+                    value={targetLang.code} 
+                    onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
+                    disabled={status !== ConnectionStatus.DISCONNECTED}
+                    className="bg-slate-900 border-none rounded-xl py-2 text-lg font-bold text-center appearance-none cursor-pointer hover:bg-slate-800 transition-colors"
                   >
                     {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                   </select>
@@ -301,7 +310,7 @@ const App: React.FC = () => {
                   className={`py-3 px-2 rounded-2xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white border border-indigo-400 shadow-lg shadow-indigo-600/20' : 'bg-slate-800/40 text-slate-500 border border-transparent hover:bg-slate-800'}`}
                 >
                   <span className="text-2xl">{s.icon}</span>
-                  <span className="text-[10px] font-black uppercase">{s.title}</span>
+                  <span className="text-[10px] font-black uppercase tracking-tighter">{s.title}</span>
                 </button>
               ))}
             </div>
@@ -309,10 +318,12 @@ const App: React.FC = () => {
 
           <div className="flex flex-col items-center justify-center gap-6 py-4">
             <Avatar state={status !== ConnectionStatus.CONNECTED ? 'idle' : isSpeaking ? 'speaking' : isMuted ? 'thinking' : 'listening'} />
-            <div className="text-center">
+            <div className="text-center px-4">
                <h2 className="text-xl font-black text-white">{selectedScenario.title} Mode</h2>
                <p className="text-indigo-400 text-[10px] font-black uppercase tracking-widest mt-1">
-                 {isSpeaking ? 'Zephyr is speaking' : status === ConnectionStatus.CONNECTED ? (isMuted ? 'Mic Paused' : 'Listening...') : 'Ready to start'}
+                 {selectedScenario.id === 'translator' 
+                   ? `Translating between ${nativeLang.name} & ${targetLang.name}`
+                   : `Practicing ${targetLang.name} with Zephyr`}
                </p>
             </div>
             
@@ -347,8 +358,12 @@ const App: React.FC = () => {
           <div className="flex-1 overflow-y-auto scrollbar-thin flex flex-col gap-2 pr-2">
             {transcript.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-40 italic text-sm text-center max-w-xs mx-auto">
-                <p className="mb-2">Choose a mode and start your session.</p>
-                <p className="text-xs">In "Translation" mode, I translate between languages. In other modes, I am your language tutor.</p>
+                <p className="mb-2 font-bold">Waiting for your voice...</p>
+                <p className="text-xs">
+                  {selectedScenario.id === 'translator' 
+                    ? `I will translate everything you or your partner say between ${nativeLang.name} and ${targetLang.name} immediately.`
+                    : `Speak to me in ${targetLang.name}, and I will help you learn and correct your mistakes!`}
+                </p>
               </div>
             ) : (
               transcript.map((entry, idx) => <TranscriptItem key={idx} entry={entry} />)
