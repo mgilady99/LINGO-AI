@@ -8,13 +8,8 @@ import AudioVisualizer from './components/AudioVisualizer';
 import transcriptitem from './components/transcriptitem'; 
 
 const uiTranslations: Record<string, any> = {
-  'en-US': { title: 'LingoLive Pro', pair: 'Language Pair', from: 'From', to: 'To', start: 'START', stop: 'STOP', feed: 'Live Feed', logs: 'Logs', scenarios: { simultaneous: 'LIVE TRANSLATE', translator: 'Ongoing Translation', casual: 'CHAT', learn: 'LEARN' } },
-  'he-IL': { title: 'לינגו-לייב פרו', pair: 'צמד שפות', from: 'מ-', to: 'ל-', start: 'התחל', stop: 'עצור', feed: 'תמלול חי', logs: 'לוגים', scenarios: { simultaneous: 'תרגום חי', translator: 'תרגום רציף', casual: 'צ׳אט', learn: 'למידה' } },
-  'ar-XA': { title: 'لينغو لايف برو', pair: 'زوج اللغات', from: 'من', to: 'إلى', start: 'بدء', stop: 'إيقاف', feed: 'البث المباشر', logs: 'سجلات', scenarios: { simultaneous: 'ترجمة فورية', translator: 'ترجمة مستمرة', casual: 'دردشة', learn: 'تعلم' } },
-  'fr-FR': { title: 'LingoLive Pro', pair: 'Paire de langues', from: 'De', to: 'À', start: 'DÉMARRER', stop: 'ARRÊTER', feed: 'Direct', logs: 'Logs', scenarios: { simultaneous: 'TRADUCTION LIVE', translator: 'Traduction Continue', casual: 'CHAT', learn: 'APPRENDRE' } },
-  'de-DE': { title: 'LingoLive Pro', pair: 'Sprachpaar', from: 'Von', to: 'Nach', start: 'STARTEN', stop: 'STOPPEN', feed: 'Live-Feed', logs: 'Logs', scenarios: { simultaneous: 'LIVE-ÜBERSETZUNG', translator: 'Laufende Übersetzung', casual: 'CHAT', learn: 'LERNEN' } },
-  'es-ES': { title: 'LingoLive Pro', pair: 'Par de idiomas', from: 'De', to: 'A', start: 'INICIAR', stop: 'PARAR', feed: 'Traducción', logs: 'Logs', scenarios: { simultaneous: 'TRADUCCIÓN EN VIVO', translator: 'Traducción Continua', casual: 'CHAT', learn: 'APRENDER' } },
-  'zh-CN': { title: 'LingoLive 专业版', pair: '语言配对', from: '从', to: '到', start: '开始', stop: '停止', feed: '实时流', logs: '日志', scenarios: { simultaneous: '实时翻译', translator: '持续翻译', casual: '聊天', learn: '学习' } }
+  'en-US': { title: 'LingoLive Pro', native: 'Native Language', target: 'Translation/Learning', start: 'START', stop: 'STOP', feed: 'Live Feed', logs: 'Logs', scenarios: { simultaneous: 'LIVE TRANSLATE', translator: 'Simultaneous Translation', casual: 'CHAT', learn: 'LEARN' } },
+  'he-IL': { title: 'לינגו-לייב פרו', native: 'שפת אם', target: 'שפת תרגום/למידה', start: 'התחל', stop: 'עצור', feed: 'תמלול חי', logs: 'לוגים', scenarios: { simultaneous: 'LIVE TRANSLATE', translator: 'תרגום סימולטני', casual: 'צ׳אט', learn: 'למידה' } },
 };
 
 const App: React.FC = () => {
@@ -82,14 +77,26 @@ const App: React.FC = () => {
       const outputNode = outputCtx.createGain();
       outputNode.connect(outputCtx.destination);
 
-      // הוראות קצרות משפרות את מהירות התגובה בשפות שאינן אנגלית
+      // הגדרת לוגיקה מחמירה לפי המודול שנבחר
       let sysInst = "";
-      if (selectedScenario.id === 'simultaneous' || selectedScenario.id === 'translator') {
-        sysInst = `FAST INTERPRETER: ${nativeLang.name} <-> ${targetLang.name}. No repeat. Translate instantly.`;
+      
+      if (selectedScenario.id === 'simultaneous') {
+        // LIVE TRANSLATE - שיחת 2 אנשים
+        sysInst = `You are a conversation interpreter between ${nativeLang.name} and ${targetLang.name}. 
+        When you hear ${nativeLang.name}, translate to ${targetLang.name}. 
+        When you hear ${targetLang.name}, translate to ${nativeLang.name}. 
+        Wait for a sentence to finish, then translate. Speak only the translation.`;
+      } else if (selectedScenario.id === 'translator') {
+        // SIMULTANEOUS TRANSLATION - הרצאות/נאומים
+        sysInst = `You are a high-speed simultaneous interpreter for a lecture. 
+        Listen to the speech and translate it INSTANTLY and CONTINUOUSLY into ${nativeLang.name}. 
+        Do not wait for pauses. Start immediately and don't stop. Output ONLY translation.`;
       } else if (selectedScenario.id === 'casual') {
-        sysInst = `Speak ONLY ${targetLang.name}.`;
-      } else {
-        sysInst = `Tutor in ${targetLang.name}. Brief corrections.`;
+        // CHAT
+        sysInst = `Act as a friendly chat partner. Speak ONLY in ${targetLang.name}. Do not translate or correct me.`;
+      } else if (selectedScenario.id === 'learn') {
+        // LEARN
+        sysInst = `Act as a language tutor. Speak in ${targetLang.name}. After every response, provide a short grammar correction and pronunciation tip in brackets [].`;
       }
 
       const sessionPromise = ai.live.connect({
@@ -136,20 +143,18 @@ const App: React.FC = () => {
         config: { 
           responseModalities: [Modality.AUDIO], 
           systemInstruction: sysInst,
-          generationConfig: { temperature: 0.3 }, // הנמכה נוספת לטובת מהירות תגובה
-          speechConfig: { 
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } }
-          }
+          generationConfig: { temperature: 0.4 },
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
         }
       });
       activeSessionRef.current = await sessionPromise;
-    } catch (e) { setError('Start failed'); setStatus(ConnectionStatus.ERROR); }
+    } catch (e) { setError('Failed'); setStatus(ConnectionStatus.ERROR); }
   };
 
   if (hasKey === null) return <div className="h-screen bg-slate-950 flex items-center justify-center"><div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className={`h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden ${isRTL ? 'rtl' : 'ltr'}`}>
+    <div className={`h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden ${isRTL ? 'rtl text-right' : 'ltr text-left'}`}>
       <header className="p-4 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-2xl z-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg"><Headphones size={20} /></div>
@@ -162,21 +167,20 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto">
+        <div className="w-full md:w-[450px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto scrollbar-thin">
           <div className="w-full bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-xl">
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black uppercase text-slate-500 px-1">{ui.pair}</label>
               <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
                 <div className="flex-1 text-center">
-                  <span className="text-[9px] font-black text-slate-400 block">{ui.from}</span>
-                  <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent border-none font-bold text-sm outline-none w-full text-center">
+                  <label className="text-[10px] font-black uppercase text-indigo-400 block mb-1">{ui.native}</label>
+                  <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full">
                     {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                   </select>
                 </div>
-                <ChevronRight size={16} className={`text-indigo-500 ${isRTL ? 'rotate-180' : ''}`} />
+                <ChevronRight size={16} className={`text-indigo-500 mt-4 ${isRTL ? 'rotate-180' : ''}`} />
                 <div className="flex-1 text-center">
-                  <span className="text-[9px] font-black text-slate-400 block">{ui.to}</span>
-                  <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent border-none font-bold text-sm outline-none w-full text-center">
+                   <label className="text-[10px] font-black uppercase text-indigo-400 block mb-1">{ui.target}</label>
+                  <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full">
                     {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                   </select>
                 </div>
@@ -184,20 +188,23 @@ const App: React.FC = () => {
             </div>
             
             <div className="grid grid-cols-2 gap-3">
-              {SCENARIOS.map(s => (
-                <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-6 px-2 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-500'}`}>
-                  <span className="text-2xl">{s.icon}</span>
-                  <span className="font-black uppercase tracking-tighter text-center leading-none text-sm">
-                    {s.id === 'translator' ? ui.ongoing : ui.scenarios?.[s.id] || s.title}
-                  </span>
-                </button>
-              ))}
+              {SCENARIOS.map(s => {
+                const label = ui.scenarios[s.id as keyof typeof ui.scenarios] || s.title;
+                return (
+                  <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-6 px-2 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-500'}`}>
+                    <span className="text-3xl">{s.icon}</span>
+                    <span className="font-black uppercase tracking-tighter text-center leading-tight text-base">
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="flex flex-col items-center justify-center gap-6 py-4">
             <Avatar state={status !== ConnectionStatus.CONNECTED ? 'idle' : isSpeaking ? 'speaking' : isMuted ? 'thinking' : 'listening'} />
-            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className="bg-indigo-600 px-10 py-5 rounded-full font-black text-lg shadow-xl flex items-center gap-3 hover:bg-indigo-500">
+            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className="bg-indigo-600 px-10 py-5 rounded-full font-black text-xl shadow-xl flex items-center gap-3 hover:bg-indigo-500 transition-all">
               <Mic size={24} /> {status === ConnectionStatus.CONNECTED ? ui.stop : ui.start}
             </button>
             {(isSpeaking || (status === ConnectionStatus.CONNECTED && !isMuted)) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
