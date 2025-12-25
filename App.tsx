@@ -35,41 +35,33 @@ const App: React.FC = () => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [transcript, interimUserText, interimModelText]);
 
-  // --- קטע הקוד החדש לבדיקת המפתח ---
+  // --- הקוד שביקשת לשתול לבדיקת המפתח ---
   useEffect(() => {
-    const checkKey = async () => {
-      // בדיקה רחבה: מנסה למצוא את המפתח בכמה מקומות אפשריים (Cloudflare, Vite, process.env)
-      const envKey = (import.meta as any).env?.API_KEY || (process as any).env?.API_KEY;
+    const checkKey = () => {
+      // הדרך הרשמית והיחידה של Vite לחשוף משתנים
+      const envKey = import.meta.env.VITE_API_KEY;
       
-      if (envKey && envKey !== 'undefined' && envKey !== '') {
+      console.log("Checking API Key existence..."); // זה יעזור לך ב-Console של הדפדפן (F12)
+      
+      if (envKey && envKey.length > 5) { // בדיקה שיש תוכן אמיתי
         setHasKey(true);
-        return;
-      }
-      
-      // בדיקה מול הכלי של AI Studio אם הוא מוזרק לדפדפן
-      // @ts-ignore
-      if (window.aistudio?.hasSelectedApiKey) {
-        const exists = await window.aistudio.hasSelectedApiKey();
-        setHasKey(exists);
       } else {
         setHasKey(false);
       }
     };
-
     checkKey();
-    const interval = setInterval(checkKey, 2000);
-    return () => clearInterval(interval);
   }, []);
-  // --------------------------------
+  // ---------------------------------------
 
   const handleSelectKey = async () => {
     // @ts-ignore
     if (window.aistudio?.openSelectKey) {
       await window.aistudio.openSelectKey();
-      setHasKey(true);
+      const exists = await window.aistudio.hasSelectedApiKey();
+      setHasKey(exists);
       setError(null);
     } else {
-      setError("API Key not found. Please set it in your Cloudflare environment variables.");
+      setError("API Key not found. Please set VITE_API_KEY in Cloudflare Settings.");
     }
   };
 
@@ -103,10 +95,10 @@ const App: React.FC = () => {
   }, []);
 
   const startConversation = async () => {
-    // משיכת המפתח בזמן אמת מהסביבה
-    const apiKey = (import.meta as any).env?.API_KEY || (process as any).env?.API_KEY;
+    // שימוש באותו משתנה של Vite גם כאן
+    const apiKey = import.meta.env.VITE_API_KEY;
     
-    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+    if (!apiKey) {
       handleSelectKey();
       return;
     }
@@ -131,19 +123,16 @@ const App: React.FC = () => {
       outputNode.connect(outputCtx.destination);
 
       let systemInstruction = "";
-      
       if (selectedScenario.id === 'simultaneous') {
-        systemInstruction = `STRICT OPERATING MODE: SIMULTANEOUS INTERPRETER. SOURCE: ${nativeLang.name}. TARGET: ${targetLang.name}. RULE: TRANSLATE IMMEDIATELY.`;
+        systemInstruction = `STRICT OPERATING MODE: SIMULTANEOUS INTERPRETER. SOURCE: ${nativeLang.name}. TARGET: ${targetLang.name}.`;
       } else if (selectedScenario.id === 'translator') {
         systemInstruction = `ROLE: DIALOGUE TRANSLATOR. LANGUAGES: ${nativeLang.name} and ${targetLang.name}.`;
-      } else if (selectedScenario.id === 'casual') {
+      } else {
         systemInstruction = `ROLE: CHAT PARTNER. TARGET LANGUAGE: ${targetLang.name}.`;
-      } else if (selectedScenario.id === 'learn') {
-        systemInstruction = `ROLE: LANGUAGE TEACHER. TARGET LANGUAGE: ${targetLang.name}. NATIVE LANGUAGE: ${nativeLang.name}.`;
       }
       
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.0-flash-exp', // וודא שזה המודל העדכני שאתה משתמש בו
+        model: 'gemini-2.0-flash-exp',
         callbacks: {
           onopen: () => {
             setStatus(ConnectionStatus.CONNECTED);
@@ -172,16 +161,12 @@ const App: React.FC = () => {
             }
 
             if (m.serverContent?.turnComplete) {
-              const userText = currentInputTranscription.current;
-              const modelText = currentOutputTranscription.current;
-
               setTranscript(prev => {
                 const newEntries: TranscriptionEntry[] = [...prev];
-                if (userText) newEntries.push({ role: 'user', text: userText, timestamp: new Date() });
-                if (modelText) newEntries.push({ role: 'model', text: modelText, timestamp: new Date() });
+                if (currentInputTranscription.current) newEntries.push({ role: 'user', text: currentInputTranscription.current, timestamp: new Date() });
+                if (currentOutputTranscription.current) newEntries.push({ role: 'model', text: currentOutputTranscription.current, timestamp: new Date() });
                 return newEntries;
               });
-
               currentInputTranscription.current = '';
               currentOutputTranscription.current = '';
               setInterimUserText('');
@@ -212,7 +197,7 @@ const App: React.FC = () => {
               setIsSpeaking(false);
             }
           },
-          onerror: (e: any) => { 
+          onerror: () => { 
             setError('Connection failed. Please check your API key.');
             stopConversation(); 
           },
@@ -228,7 +213,7 @@ const App: React.FC = () => {
       });
       activeSessionRef.current = await sessionPromise;
     } catch (e: any) { 
-      setError('Connection failed. Check permissions.'); 
+      setError('Connection failed.'); 
       setStatus(ConnectionStatus.ERROR); 
     }
   };
@@ -264,33 +249,30 @@ const App: React.FC = () => {
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Language Pair</label>
               <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <span className="text-[8px] text-center text-slate-400 font-black mb-1 uppercase">From</span>
                   <select 
                     value={nativeLang.code} 
                     onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
                     disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-sm md:text-lg font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
+                    className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
                   >
                     {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                   </select>
                 </div>
-                <div className="flex flex-col justify-center items-center mt-3 text-indigo-500">
+                <div className="flex flex-col justify-center items-center text-indigo-500">
                   <ChevronRight size={16} />
                 </div>
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <span className="text-[8px] text-center text-slate-400 font-black mb-1 uppercase">To</span>
                   <select 
                     value={targetLang.code} 
                     onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} 
                     disabled={status !== ConnectionStatus.DISCONNECTED}
-                    className="bg-slate-900 border-none rounded-xl py-2 text-sm md:text-lg font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
+                    className="bg-slate-900 border-none rounded-xl py-2 text-sm font-bold text-center outline-none w-full hover:bg-slate-800 transition-colors"
                   >
                     {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
                   </select>
                 </div>
               </div>
             </div>
-            
             <div className="grid grid-cols-2 gap-2">
               {SCENARIOS.map(s => (
                 <button 
@@ -324,10 +306,9 @@ const App: React.FC = () => {
               ) : (
                 <button 
                   onClick={startConversation} 
-                  disabled={status === ConnectionStatus.CONNECTING} 
                   className="bg-indigo-600 px-10 py-5 rounded-full font-black flex items-center gap-3 text-lg shadow-2xl hover:bg-indigo-500 transition-all"
                 >
-                  <Mic size={24} /> {status === ConnectionStatus.CONNECTING ? 'Connecting...' : 'START SESSION'}
+                  <Mic size={24} /> START SESSION
                 </button>
               )}
             </div>
@@ -345,12 +326,6 @@ const App: React.FC = () => {
             {transcript.map((entry, idx) => <transcriptitem key={idx} entry={entry} />)}
             {interimUserText && <transcriptitem entry={{role: 'user', text: interimUserText, timestamp: new Date()}} />}
             {interimModelText && <transcriptitem entry={{role: 'model', text: interimModelText, timestamp: new Date()}} />}
-            {transcript.length === 0 && !interimUserText && (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-40 italic text-sm text-center">
-                <p className="mb-2 font-bold text-white/50">Listening for your voice...</p>
-                <p className="text-xs">Start speaking to see the transcript here.</p>
-              </div>
-            )}
             <div ref={transcriptEndRef} />
           </div>
         </div>
