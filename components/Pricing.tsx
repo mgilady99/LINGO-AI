@@ -75,10 +75,8 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail }) => {
 
   // טיפול בהצלחת תשלום
   const handlePaymentSuccess = async (data: any, actions: any) => {
-      // ביצוע החיוב בפייפל
       await actions.order.capture();
       
-      // עדכון השרת שלנו
       if (!userEmail) return;
       try {
           const res = await fetch('/api/upgrade', {
@@ -172,7 +170,8 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail }) => {
             <input 
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
-                placeholder="למשל: gift10003"
+                // השינוי בוצע כאן:
+                placeholder="home11111"
                 className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500 text-center"
             />
             <button onClick={handlePromoCode} disabled={loading} className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl font-bold text-white transition-all disabled:opacity-50">
