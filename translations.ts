@@ -1,7 +1,9 @@
-// src/translations.ts
-
 export const translations: Record<string, any> = {
   'he-IL': {
+    // --- תוויות שפה חדשות ---
+    label_native: "שפת אם (ממשק)",
+    label_target: "שפת תרגום (יעד)",
+
     // --- Login ---
     login_title: "ברוך הבא! הכנס לחשבון",
     email_placeholder: "אימייל",
@@ -27,8 +29,8 @@ export const translations: Record<string, any> = {
     promo_btn: "הפעל",
     
     // --- App UI ---
-    start_conversation: "התחל",
-    stop_conversation: "הפסק",
+    start_conversation: "התחל שיחה",
+    stop_conversation: "סיים שיחה",
     admin_panel: "כניסת אדמין",
     logout: "יציאה",
     scenario: "תרחיש",
@@ -44,6 +46,10 @@ export const translations: Record<string, any> = {
   },
   
   'en-US': {
+    // --- Labels ---
+    label_native: "Native Language",
+    label_target: "Target Language",
+
     // --- Login ---
     login_title: "Welcome! Please Login",
     email_placeholder: "Email",
