@@ -10,6 +10,8 @@ import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import { translations } from './translations';
 
+// --- רכיבי עזר ---
+
 const ForgotPasswordView: React.FC<{ onBack: () => void, t: any }> = ({ onBack, t }) => {
   const [email, setEmail] = useState('');
   const handleSubmit = async () => {
@@ -50,6 +52,8 @@ const ResetPasswordView: React.FC<{ token: string, onSuccess: () => void }> = ({
         </div>
     );
 };
+
+// --- האפליקציה הראשית ---
 
 const App: React.FC = () => {
   const [view, setView] = useState<'LOGIN' | 'PRICING' | 'APP' | 'ADMIN' | 'FORGOT' | 'RESET'>('LOGIN');
@@ -131,19 +135,23 @@ const App: React.FC = () => {
     try {
       setStatus(ConnectionStatus.CONNECTING);
 
-      if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
-      if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
+      // --- תיקון: יצירת AudioContext ללא הגדרת SampleRate כפויה ---
+      // זה מאפשר לדפדפן לבחור את הקצב הטבעי שלו (48k/44.1k) ומונע תקלות
+      if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext();
+      if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext();
 
-      // הפעלת אודיו בכוח (חובה!)
-      await inputAudioContextRef.current.resume();
-      await outputAudioContextRef.current.resume();
+      // הפעלת האודיו (חובה לדפדפנים כמו כרום)
+      if(inputAudioContextRef.current.state === 'suspended') await inputAudioContextRef.current.resume();
+      if(outputAudioContextRef.current.state === 'suspended') await outputAudioContextRef.current.resume();
 
       const ai = new GoogleGenAI({ apiKey });
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
       
       const outputCtx = outputAudioContextRef.current;
+      // הגברה קלה לעוצמת השמע
       const outputNode = outputCtx.createGain(); 
+      outputNode.gain.value = 1.5; 
       outputNode.connect(outputCtx.destination);
 
       const instructions = selectedScenario.systemInstruction
@@ -161,15 +169,16 @@ const App: React.FC = () => {
       activeSessionRef.current = await sessionPromise;
       
       const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
-      const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
+      const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
       
       scriptProcessor.onaudioprocess = (e) => {
           const inputData = e.inputBuffer.getChannelData(0).slice();
           if (activeSessionRef.current) {
-              // --- התיקון הקריטי כאן: שליחת אובייקט עם mimeType ו-data ---
+              // --- תיקון קריטי: שליחת ה-Sample Rate האמיתי של המיקרופון לגוגל ---
+              const currentRate = inputAudioContextRef.current?.sampleRate || 16000;
               const pcmData = createPcmBlob(inputData);
               activeSessionRef.current.sendRealtimeInput([
-                  { mimeType: "audio/pcm;rate=16000", data: pcmData }
+                  { mimeType: `audio/pcm;rate=${currentRate}`, data: pcmData }
               ]);
           }
       };
@@ -183,7 +192,11 @@ const App: React.FC = () => {
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData) {
                     setIsSpeaking(true);
+                    
+                    // ודא שהתזמון מסונכרן
                     nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
+                    
+                    // פענוח (גוגל תמיד מחזיר 24000)
                     const buffer = await decodeAudioData(decode(audioData), outputCtx, 24000, 1);
                     
                     const audioSource = outputCtx.createBufferSource();
@@ -207,7 +220,7 @@ const App: React.FC = () => {
     } catch (e) { 
         console.error("Connection failed:", e);
         setStatus(ConnectionStatus.DISCONNECTED); 
-        alert("תקלה בהתחברות"); 
+        alert("תקלה בהתחברות. ודא שנתת אישור למיקרופון."); 
     }
   };
 
