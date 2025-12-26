@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings, KeyRound, LogOut } from 'lucide-react';
@@ -90,8 +89,6 @@ const App: React.FC = () => {
       try {
         const localUser = JSON.parse(savedUserStr);
         if (localUser && localUser.email) {
-            console.log("Restoring user from memory:", localUser);
-            // שחזור מיידי ללא בדיקת שרת
             handleLoginSuccess(localUser, false);
         }
       } catch (e) { localStorage.removeItem('lingolive_user'); }
@@ -146,7 +143,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('lingolive_user'); // מחיקת הזיכרון
+    localStorage.removeItem('lingolive_user');
     setUserData(null);
     setView('LOGIN');
     if (activeSessionRef.current) stopConversation();
@@ -223,7 +220,8 @@ const App: React.FC = () => {
       </div>
   );
 
-  if (view === 'ADMIN') return <Admin onBack={() => setView('APP')} />;
+  // --- כאן נמצא השינוי: window.location.reload() ---
+  if (view === 'ADMIN') return <Admin onBack={() => window.location.reload()} />;
 
   return (
     <div className="h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden rtl font-['Inter']">
