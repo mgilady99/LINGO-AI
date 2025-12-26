@@ -61,8 +61,8 @@ const App: React.FC = () => {
   const [resetToken, setResetToken] = useState('');
   
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
-  const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]); // ברירת מחדל: עברית
-  const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]); // ברירת מחדל: אנגלית
+  const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]);
+  const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]);
   const [selectedScenario, setSelectedScenario] = useState<PracticeScenario>(SCENARIOS[0]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ads, setAds] = useState<any[]>([]);
@@ -255,10 +255,8 @@ const App: React.FC = () => {
         <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5">
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-2xl">
             
-            {/* --- בורר שפות עם כותרות --- */}
             <div className="bg-slate-800/40 p-3 rounded-2xl">
               <div className="flex justify-between px-2 mb-2 text-[10px] font-bold text-indigo-300 uppercase tracking-widest">
-                  {/* ב-RTL, האלמנט הראשון (native) יהיה בצד ימין, והשני (target) בצד שמאל */}
                   <span>{t('label_native')}</span>
                   <span>{t('label_target')}</span>
               </div>
@@ -284,7 +282,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex flex-col items-center py-6 flex-1 justify-center relative">
             <Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} />
-            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className={`mt-8 px-12 py-5 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 transition-all active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}><Mic size={28} /> {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}</button>
+            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className={`mt-8 px-8 py-4 rounded-full font-black text-lg shadow-2xl flex items-center gap-3 transition-all active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}><Mic size={28} /> {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}</button>
             {(isSpeaking || status === ConnectionStatus.CONNECTED) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
         </div>
