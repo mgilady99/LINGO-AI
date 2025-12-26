@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings, ArrowRight, KeyRound } from 'lucide-react';
+import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings, KeyRound } from 'lucide-react';
 import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeScenario } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
@@ -9,67 +9,42 @@ import Login from './components/Login';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 
-// רכיב פנימי קטן לשחזור סיסמה (כדי לחסוך קובץ)
-const ForgotPasswordView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [email, setEmail] = useState('');
-  
-  const handleSubmit = async () => {
-    if(!email) return;
-    const res = await fetch('/api/forgot-password', {
-        method: 'POST', 
-        body: JSON.stringify({ email })
-    });
-    const data = await res.json();
-    // בהדמיה - אנחנו מראים את הלינק למשתמש
-    if(data.devLink) {
-        prompt("העתק את הלינק הזה והדבק בדפדפן כדי לאפס סיסמה (במציאות זה נשלח למייל):", window.location.origin + data.devLink);
-    } else {
-        alert(data.message || "נשלח מייל שחזור");
-    }
-  };
-
-  return (
-    <div className="flex h-screen items-center justify-center bg-[#0f172a] rtl text-white">
-        <div className="w-full max-w-sm p-8 bg-[#1e293b] rounded-3xl border border-white/10 text-center">
-            <h2 className="text-2xl font-bold mb-4">שחזור סיסמה</h2>
-            <p className="text-slate-400 mb-6 text-sm">הכנס את האימייל שלך ונשלח לך קישור לאיפוס</p>
-            <input className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 mb-4 text-center" 
-                   placeholder="אימייל" value={email} onChange={e => setEmail(e.target.value)} />
-            <button onClick={handleSubmit} className="w-full bg-indigo-600 py-3 rounded-xl font-bold mb-4">שלח קישור</button>
-            <button onClick={onBack} className="text-slate-500 text-sm">חזרה לכניסה</button>
-        </div>
-    </div>
-  );
+// פונקציות עזר לטיפול ב-SEO
+const updateMetaTag = (name: string, content: string) => {
+  if (!content) return;
+  let tag = document.querySelector(`meta[name="${name}"]`);
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute('name', name);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', content);
 };
 
-// רכיב פנימי לאיפוס סיסמה (אחרי לחיצה על הלינק)
-const ResetPasswordView: React.FC<{ token: string, onSuccess: () => void }> = ({ token, onSuccess }) => {
-    const [pass, setPass] = useState('');
-    const handleReset = async () => {
-        const res = await fetch('/api/reset-password', {
-            method: 'POST', body: JSON.stringify({ token, newPassword: pass })
-        });
-        if(res.ok) { alert('הסיסמה שונתה בהצלחה! התחבר מחדש.'); onSuccess(); }
-        else { alert('שגיאה באיפוס'); }
-    };
-    return (
-        <div className="flex h-screen items-center justify-center bg-[#0f172a] rtl text-white">
-            <div className="w-full max-w-sm p-8 bg-[#1e293b] rounded-3xl border border-white/10 text-center">
-                <h2 className="text-2xl font-bold mb-4">יצירת סיסמה חדשה</h2>
-                <input type="password" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 mb-4 text-center" 
-                       placeholder="סיסמה חדשה" value={pass} onChange={e => setPass(e.target.value)} />
-                <button onClick={handleReset} className="w-full bg-green-600 py-3 rounded-xl font-bold">עדכן סיסמה</button>
-            </div>
-        </div>
-    );
+const injectGoogleAnalytics = (gaId: string) => {
+  if (!gaId || document.getElementById('ga-script')) return;
+  
+  const script1 = document.createElement('script');
+  script1.id = 'ga-script';
+  script1.async = true;
+  script1.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+  document.head.appendChild(script1);
+
+  const script2 = document.createElement('script');
+  script2.innerHTML = `
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '${gaId}');
+  `;
+  document.head.appendChild(script2);
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'LOGIN' | 'PRICING' | 'APP' | 'ADMIN' | 'FORGOT' | 'RESET'>('LOGIN');
+  const [view, setView] = useState<'LOGIN' | 'PRICING' | 'APP' | 'ADMIN'>('LOGIN');
   const [userData, setUserData] = useState<any>(null);
-  const [resetToken, setResetToken] = useState('');
   
-  // משתנים רגילים של האפליקציה...
+  // משתני אפליקציה
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]);
   const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]);
@@ -77,6 +52,7 @@ const App: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ads, setAds] = useState<any[]>([]);
 
+  // Refs
   const activeSessionRef = useRef<any>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -84,30 +60,32 @@ const App: React.FC = () => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const nextStartTimeRef = useRef(0);
 
+  // --- טעינת הגדרות, SEO ופרסומות ---
   useEffect(() => {
-    // בדיקה אם הגענו מקישור איפוס סיסמה
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    const viewParam = params.get('view');
-    
-    if (viewParam === 'RESET' && token) {
-        setResetToken(token);
-        setView('RESET');
-        // מנקה את ה-URL
-        window.history.replaceState({}, document.title, "/");
-    }
+    fetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        // טעינת פרסומות
+        if(data.ads) setAds(data.ads);
+        
+        // החלת הגדרות SEO וקודים
+        if(data.settings) {
+          const getVal = (k: string) => data.settings.find((s: any) => s.key === k)?.value;
+          
+          const title = getVal('seo_title');
+          if(title) document.title = title;
 
-    fetch('/api/admin/settings').then(res => res.json()).then(data => {
-      if(data.ads) setAds(data.ads);
-      if(data.settings) {
-        const seoTitle = data.settings.find((s: any) => s.key === 'seo_title');
-        if(seoTitle) document.title = seoTitle.value;
-      }
-    }).catch(() => {});
+          updateMetaTag('description', getVal('seo_description'));
+          updateMetaTag('keywords', getVal('seo_keywords'));
+          updateMetaTag('google-site-verification', getVal('google_console_id'));
+          
+          injectGoogleAnalytics(getVal('google_analytics_id'));
+        }
+      })
+      .catch(err => console.error("Error loading settings:", err));
   }, []);
 
   const handleLoginSuccess = (user: any) => {
-    // מעקף מנהל מעודכן לסיסמה החדשה
     if (user.email === 'mgilady@gmail.com') {
         const adminUser = { ...user, role: 'ADMIN', plan: 'PRO' };
         setUserData(adminUser);
@@ -178,10 +156,7 @@ const App: React.FC = () => {
     } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); alert("תקלה בהתחברות"); }
   };
 
-  // --- ניתוב תצוגות ---
-  if (view === 'FORGOT') return <ForgotPasswordView onBack={() => setView('LOGIN')} />;
-  if (view === 'RESET') return <ResetPasswordView token={resetToken} onSuccess={() => setView('LOGIN')} />;
-  if (view === 'LOGIN') return <Login onLoginSuccess={handleLoginSuccess} onForgotPassword={() => setView('FORGOT')} />;
+  if (view === 'LOGIN') return <Login onLoginSuccess={handleLoginSuccess} onForgotPassword={() => {}} />;
   if (view === 'PRICING') return <Pricing onPlanSelect={(plan) => { if(userData) setUserData({...userData, plan}); setView('APP'); }} />;
   if (view === 'ADMIN') return <Admin onBack={() => setView('APP')} />;
 
