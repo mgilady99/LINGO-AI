@@ -212,15 +212,19 @@ const App: React.FC = () => {
   if (view === 'LOGIN') return <Login onLoginSuccess={handleLoginSuccess} onForgotPassword={() => setView('FORGOT')} />;
   
   if (view === 'PRICING') return (
-      <div className="relative">
-          <Pricing onPlanSelect={(plan) => { if(userData) setUserData({...userData, plan}); setView('APP'); }} />
+      <div className="relative h-screen">
+          {/* כאן התיקון: מעבירים userEmail לרכיב ה-Pricing */}
+          <Pricing 
+              onPlanSelect={(plan) => { if(userData) setUserData({...userData, plan}); setView('APP'); }} 
+              userEmail={userData?.email}
+          />
           <button onClick={handleLogout} className="fixed top-4 left-4 z-50 bg-slate-800 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:bg-red-500 flex items-center gap-2">
             <LogOut size={14}/> יציאה / החלף משתמש
           </button>
       </div>
   );
 
-  // כאן נמצא התיקון שמרענן את האתר ביציאה מהניהול
+  // חזרה לניהול מרעננת את האתר
   if (view === 'ADMIN') return <Admin onBack={() => window.location.reload()} />;
 
   return (
