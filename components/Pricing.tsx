@@ -28,15 +28,14 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
 
   useEffect(() => {
     if (paypalLoaded && window.paypal) {
-        const btnStyle = { layout: 'horizontal', height: 35, tagline: false, shape: 'pill', label: 'pay' };
+        // גובה סטנדרטי לכפתורי פייפל (40px)
+        const btnStyle = { layout: 'horizontal', height: 40, tagline: false, shape: 'pill', label: 'pay' };
 
         if (basicBtnRef.current) {
             basicBtnRef.current.innerHTML = "";
             window.paypal.Buttons({
                 style: btnStyle,
-                createOrder: (d: any, actions: any) => actions.order.create({
-                    purchase_units: [{ description: "Basic Plan", amount: { value: "3.90", currency_code: "USD" } }]
-                }),
+                createOrder: (d: any, actions: any) => actions.order.create({ purchase_units: [{ description: "Basic Plan", amount: { value: "3.90", currency_code: "USD" } }] }),
                 onApprove: (d:any, a:any) => handlePaymentSuccess(a, 'PAYPAL_BASIC')
             }).render(basicBtnRef.current);
         }
@@ -45,9 +44,7 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
             advancedBtnRef.current.innerHTML = "";
             window.paypal.Buttons({
                 style: btnStyle,
-                createOrder: (d: any, actions: any) => actions.order.create({
-                    purchase_units: [{ description: "Advanced Plan", amount: { value: "6.90", currency_code: "USD" } }]
-                }),
+                createOrder: (d: any, actions: any) => actions.order.create({ purchase_units: [{ description: "Advanced Plan", amount: { value: "6.90", currency_code: "USD" } }] }),
                 onApprove: (d:any, a:any) => handlePaymentSuccess(a, 'PAYPAL_ADVANCED')
             }).render(advancedBtnRef.current);
         }
@@ -56,9 +53,7 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
             premiumBtnRef.current.innerHTML = "";
             window.paypal.Buttons({
                 style: btnStyle,
-                createOrder: (d: any, actions: any) => actions.order.create({
-                    purchase_units: [{ description: "Premium Plan", amount: { value: "11.90", currency_code: "USD" } }]
-                }),
+                createOrder: (d: any, actions: any) => actions.order.create({ purchase_units: [{ description: "Premium Plan", amount: { value: "11.90", currency_code: "USD" } }] }),
                 onApprove: (d:any, a:any) => handlePaymentSuccess(a, 'PAYPAL_PREMIUM')
             }).render(premiumBtnRef.current);
         }
@@ -112,7 +107,8 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-green-400"/> 10,000 {t('feat_tokens')}</li>
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-green-400"/> {t('feat_try')}</li>
           </ul>
-          <button onClick={() => onPlanSelect('FREE')} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-xl font-bold text-sm shadow-lg transition-all">{t('btn_start_free')}</button>
+          {/* כפתור בגודל רגיל עם טקסט מודגש וגדול יותר */}
+          <button onClick={() => onPlanSelect('FREE')} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black text-lg shadow-lg transition-all">{t('btn_start_free')}</button>
         </div>
 
         {/* BASIC */}
@@ -125,7 +121,7 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-blue-400"/> 20,000 {t('feat_tokens')}</li>
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-blue-400"/> {t('feat_personal')}</li>
           </ul>
-          <div className="w-full h-[35px] relative z-0 flex justify-center"><div ref={basicBtnRef} className="w-full"></div></div>
+          <div className="w-full h-[40px] relative z-0 flex justify-center"><div ref={basicBtnRef} className="w-full"></div></div>
         </div>
 
         {/* ADVANCED */}
@@ -138,7 +134,7 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-purple-400"/> 50,000 {t('feat_tokens')}</li>
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-purple-400"/> {t('feat_serious')}</li>
           </ul>
-          <div className="w-full h-[35px] relative z-0 flex justify-center"><div ref={advancedBtnRef} className="w-full"></div></div>
+          <div className="w-full h-[40px] relative z-0 flex justify-center"><div ref={advancedBtnRef} className="w-full"></div></div>
         </div>
 
         {/* PREMIUM */}
@@ -153,7 +149,7 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-indigo-400"/> {t('feat_smart')}</li>
             <li className="flex items-center gap-2 justify-center"><Check size={12} className="text-indigo-400"/> {t('feat_best')}</li>
           </ul>
-          <div className="w-full h-[35px] relative z-0 flex justify-center"><div ref={premiumBtnRef} className="w-full"></div></div>
+          <div className="w-full h-[40px] relative z-0 flex justify-center"><div ref={premiumBtnRef} className="w-full"></div></div>
         </div>
 
       </div>
@@ -163,8 +159,14 @@ const Pricing: React.FC<PricingProps> = ({ onPlanSelect, userEmail, t }) => {
             <Ticket size={14} className="text-indigo-400"/> {t('promo_label')}
         </label>
         <div className="flex gap-2">
-            <input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder={t('promo_placeholder')} className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-indigo-500 text-center"/>
-            <button onClick={handlePromoCode} disabled={loading} className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-bold text-white text-sm transition-all disabled:opacity-50">{loading ? '...' : t('promo_btn')}</button>
+            <input 
+              value={promoCode} 
+              onChange={(e) => setPromoCode(e.target.value)} 
+              placeholder={t('promo_placeholder')} 
+              className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-indigo-500 text-center"
+            />
+            {/* כפתור בגודל סטנדרטי עם טקסט גדול יותר */}
+            <button onClick={handlePromoCode} disabled={loading} className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-lg font-black text-white text-base transition-all disabled:opacity-50">{loading ? '...' : t('promo_btn')}</button>
         </div>
       </div>
     </div>
