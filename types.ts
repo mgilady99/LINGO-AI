@@ -1,3 +1,4 @@
+
 export interface Language {
   code: string;
   name: string;
@@ -20,126 +21,67 @@ export enum ConnectionStatus {
 
 export const SUPPORTED_LANGUAGES: Language[] = [
   { 
-    code: 'he-IL',     // חייב להיות זהה ל-translations.ts
-    name: 'Hebrew', 
+    code: 'he-IL', 
+    name: 'עברית', 
     flag: '🇮🇱', 
     voiceName: 'he-IL-HilaNeural' 
   },
   { 
-    code: 'en-US',     // חייב להיות זהה ל-translations.ts
+    code: 'en-US', 
     name: 'English', 
     flag: '🇺🇸', 
     voiceName: 'en-US-Journey-D' 
   },
-  { 
-    code: 'es-ES', 
-    name: 'Spanish', 
-    flag: '🇪🇸', 
-    voiceName: 'es-ES-ElviraNeural' 
-  },
-  { 
-    code: 'fr-FR', 
-    name: 'French', 
-    flag: '🇫🇷', 
-    voiceName: 'fr-FR-DeniseNeural' 
-  },
-  { 
-    code: 'de-DE', 
-    name: 'German', 
-    flag: '🇩🇪', 
-    voiceName: 'de-DE-KatjaNeural' 
-  },
-  { 
-    code: 'it-IT', 
-    name: 'Italian', 
-    flag: '🇮🇹', 
-    voiceName: 'it-IT-ElsaNeural' 
-  },
-  { 
-    code: 'pt-BR', 
-    name: 'Portuguese', 
-    flag: '🇧🇷', 
-    voiceName: 'pt-BR-FranciscaNeural' 
-  },
-  { 
-    code: 'zh-CN', 
-    name: 'Chinese', 
-    flag: '🇨🇳', 
-    voiceName: 'zh-CN-XiaoxiaoNeural' 
-  },
-  { 
-    code: 'ja-JP', 
-    name: 'Japanese', 
-    flag: '🇯🇵', 
-    voiceName: 'ja-JP-NanamiNeural' 
-  },
-  { 
-    code: 'ko-KR', 
-    name: 'Korean', 
-    flag: '🇰🇷', 
-    voiceName: 'ko-KR-SunHiNeural' 
-  },
-  { 
-    code: 'ru-RU', 
-    name: 'Russian', 
-    flag: '🇷🇺', 
-    voiceName: 'ru-RU-SvetlanaNeural' 
-  },
-  { 
-    code: 'ar-SA', 
-    name: 'Arabic', 
-    flag: '🇸🇦', 
-    voiceName: 'ar-SA-ZariyahNeural' 
-  },
-  { 
-    code: 'hi-IN', 
-    name: 'Hindi', 
-    flag: '🇮🇳', 
-    voiceName: 'hi-IN-SwaraNeural' 
-  },
-  { 
-    code: 'nl-NL', 
-    name: 'Dutch', 
-    flag: '🇳🇱', 
-    voiceName: 'nl-NL-ColetteNeural' 
-  }
+  { code: 'es-ES', name: 'Spanish', flag: '🇪🇸', voiceName: 'es-ES-ElviraNeural' },
+  { code: 'fr-FR', name: 'French', flag: '🇫🇷', voiceName: 'fr-FR-DeniseNeural' },
+  { code: 'de-DE', name: 'German', flag: '🇩🇪', voiceName: 'de-DE-KatjaNeural' },
+  { code: 'it-IT', name: 'Italian', flag: '🇮🇹', voiceName: 'it-IT-ElsaNeural' },
+  { code: 'pt-BR', name: 'Portuguese', flag: '🇧🇷', voiceName: 'pt-BR-FranciscaNeural' },
+  { code: 'zh-CN', name: 'Chinese', flag: '🇨🇳', voiceName: 'zh-CN-XiaoxiaoNeural' },
+  { code: 'ja-JP', name: 'Japanese', flag: '🇯🇵', voiceName: 'ja-JP-NanamiNeural' },
+  { code: 'ko-KR', name: 'Korean', flag: '🇰🇷', voiceName: 'ko-KR-SunHiNeural' },
+  { code: 'ru-RU', name: 'Russian', flag: '🇷🇺', voiceName: 'ru-RU-SvetlanaNeural' },
+  { code: 'ar-SA', name: 'Arabic', flag: '🇸🇦', voiceName: 'ar-SA-ZariyahNeural' },
+  { code: 'hi-IN', name: 'Hindi', flag: '🇮🇳', voiceName: 'hi-IN-SwaraNeural' },
+  { code: 'nl-NL', name: 'Dutch', flag: '🇳🇱', voiceName: 'nl-NL-ColetteNeural' }
 ];
 
+// --- הנה התרחישים שחזרו לעברית ---
 export const SCENARIOS: PracticeScenario[] = [
   { 
     id: 'cafe', 
     icon: '☕', 
-    title: 'Ordering Coffee', 
+    title: 'הזמנת קפה', 
     systemInstruction: 'Simulation: Ordering coffee at a cafe.' 
   },
   { 
     id: 'taxi', 
     icon: '🚕', 
-    title: 'Taking a Taxi', 
+    title: 'הזמנת מונית', 
     systemInstruction: 'Simulation: Giving directions to a taxi driver.' 
   },
   { 
     id: 'hotel', 
     icon: '🏨', 
-    title: 'Hotel Check-in', 
+    title: 'צ\'ק-אין במלון', 
     systemInstruction: 'Simulation: Checking into a hotel.' 
   },
   { 
     id: 'doctor', 
     icon: '👨‍⚕️', 
-    title: 'Doctor Visit', 
+    title: 'ביקור רופא', 
     systemInstruction: 'Simulation: Describing symptoms to a doctor.' 
   },
   { 
     id: 'job', 
     icon: '💼', 
-    title: 'Job Interview', 
+    title: 'ראיון עבודה', 
     systemInstruction: 'Simulation: Answering job interview questions.' 
   },
   { 
     id: 'shopping', 
     icon: '🛍️', 
-    title: 'Shopping', 
+    title: 'קניות בגדים', 
     systemInstruction: 'Simulation: Buying clothes and asking for sizes.' 
   }
 ];
