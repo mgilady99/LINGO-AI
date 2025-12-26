@@ -6,146 +6,74 @@ const Pricing: React.FC<{ onPlanSelect: (plan: string) => void }> = ({ onPlanSel
   const [isSuccess, setIsSuccess] = useState(false);
 
   const plans = [
-    {
-      id: 'FREE',
-      name: 'חינם',
-      price: '0',
-      tokens: '5,000',
-      features: ['תרגום חי בסיסי', 'קול סטנדרטי', 'ללא עלות'],
-      icon: <Zap className="text-slate-400" />,
-      buttonText: 'המשך בחינם'
-    },
-    {
-      id: 'BASIC',
-      name: 'Standard',
-      price: '4.90',
-      yearly: '58.80',
-      tokens: '20,000',
-      features: ['עדיפות במהירות תגובה', 'תרגום סימולטני', 'תמיכה במייל'],
-      icon: <Crown className="text-indigo-400" />,
-      buttonText: 'בחר במסלול'
-    },
-    {
-      id: 'PRO',
-      name: 'Premium',
-      price: '11.90',
-      yearly: '142.80',
-      tokens: '100,000',
-      features: ['מהירות מקסימלית', 'כל המודולים פתוחים', 'תמיכה אישית 24/7'],
-      icon: <Crown className="text-amber-400" />,
-      buttonText: 'בחר בפרמיום'
-    }
+    { id: 'FREE', name: 'חינם', price: '0', tokens: '5,000', icon: <Zap className="text-slate-400" />, color: 'slate' },
+    { id: 'BASIC', name: 'Standard', price: '4.90', tokens: '20,000', icon: <Crown className="text-indigo-400" />, color: 'indigo' },
+    { id: 'PRO', name: 'Premium', price: '11.90', tokens: '100,000', icon: <Crown className="text-amber-400" />, color: 'amber' }
   ];
 
   const handleRedeem = () => {
-    if (promoCode === "MEIR12321") {
-      setIsSuccess(true);
-    } else {
-      alert("קוד לא תקין.");
-    }
+    if (promoCode === "MEIR12321") setIsSuccess(true);
+    else alert("קוד לא תקין.");
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-['Inter'] rtl overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-4 py-10 flex flex-col items-center">
-        
-        {/* כותרת מותאמת למובייל */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl md:text-5xl font-black text-white mb-2 uppercase tracking-tighter">
-            בחר את המסלול שלך
-          </h1>
-          <p className="text-slate-400 text-sm md:text-lg font-bold">
-            הצטרף לקהילת המשתמשים שמתקשרים בכל שפה
-          </p>
-        </div>
+    <div className="fixed inset-0 bg-slate-950 text-slate-200 font-['Inter'] rtl overflow-y-auto">
+      <div className="w-full max-w-md mx-auto px-4 py-8 pb-20 flex flex-col items-center">
+        <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">בחר מסלול</h1>
+        <p className="text-slate-400 text-xs font-bold mb-8">הצטרף לקהילה שמתקשרת בכל שפה</p>
 
-        {/* רשימת מסלולים - אחד מתחת לשני במובייל */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="w-full space-y-4 mb-8">
           {plans.map((plan) => (
-            <div 
-              key={plan.id} 
-              className="bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 md:p-8 flex flex-col shadow-2xl transition-all"
-            >
-              <div className="mb-4 text-3xl">{plan.icon}</div>
-              <h2 className="text-2xl font-black text-white mb-1">{plan.name}</h2>
-              <div className="mb-4">
-                <span className="text-4xl font-black text-white">${plan.price}</span>
-                {plan.price !== '0' && <span className="text-slate-400 text-xs mr-2 font-bold italic">לחודש*</span>}
+            <div key={plan.id} className="bg-slate-900 border border-white/10 rounded-3xl p-5 shadow-xl">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-2xl">{plan.icon}</div>
+                <div className="text-left">
+                  <span className="text-2xl font-black text-white">${plan.price}</span>
+                  <span className="text-slate-500 text-[10px] block font-bold italic">לחודש בחיוב שנתי</span>
+                </div>
               </div>
-              
-              <div className="bg-indigo-600/10 rounded-2xl p-3 mb-6">
-                <p className="text-indigo-400 font-black text-center text-base">{plan.tokens} טוקנים</p>
-              </div>
-
-              <ul className="flex-1 space-y-3 mb-8">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-slate-300 text-sm font-bold">
-                    <Check size={14} className="text-emerald-500 shrink-0" /> {f}
-                  </li>
-                ))}
-              </ul>
-
+              <h2 className="text-xl font-black text-white mb-1">{plan.name}</h2>
+              <p className="text-indigo-400 text-sm font-black mb-4">{plan.tokens} טוקנים</p>
               <button 
                 onClick={() => onPlanSelect(plan.id)}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 rounded-2xl transition-all text-sm"
               >
-                {plan.buttonText}
+                בחר מסלול
               </button>
             </div>
           ))}
         </div>
 
-        {/* אזור קוד ההטבה - כאן יופיע הכפתור הגדול שביקשת */}
-        <div className="w-full max-w-md bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 text-center shadow-2xl mb-10">
+        <div className="w-full bg-slate-900/50 border border-white/5 rounded-3xl p-6 text-center shadow-2xl">
           {!isSuccess ? (
-            <>
-              <div className="flex items-center justify-center gap-2 mb-4 text-slate-400 font-black text-sm">
-                <Gift size={20} className="text-indigo-400" />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-center gap-2 text-slate-400 font-black text-xs">
+                <Gift size={16} className="text-indigo-400" />
                 <span>יש לך קוד הטבה?</span>
               </div>
-              <div className="flex flex-col gap-3">
-                <input 
-                  type="text" 
-                  placeholder="הכנס קוד כאן" 
-                  className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-indigo-500 font-bold text-center"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                />
-                <button 
-                  onClick={handleRedeem} 
-                  className="w-full bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-2xl font-black transition-all"
-                >
-                  הפעל קוד
-                </button>
-              </div>
-            </>
+              <input 
+                type="text" placeholder="הכנס קוד כאן" 
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-indigo-500 font-bold text-center text-sm"
+                value={promoCode} onChange={(e) => setPromoCode(e.target.value)}
+              />
+              <button onClick={handleRedeem} className="w-full bg-slate-800 py-3 rounded-xl font-black text-sm transition-all">הפעל קוד</button>
+            </div>
           ) : (
-            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4">
-                <Check size={32} className="text-emerald-500" />
+            <div className="animate-in fade-in zoom-in duration-300">
+              <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Check size={24} className="text-emerald-500" />
               </div>
-              <h3 className="text-2xl font-black text-white mb-1 uppercase tracking-tighter">
-                קוד הטבה הופעל!
-              </h3>
-              <p className="text-slate-400 font-bold mb-8 text-sm italic">
-                שודרגת למסלול Premium בחינם
-              </p>
-              
-              {/* זהו הכפתור הגדול והברור למעבר לאתר */}
+              <h3 className="text-lg font-black text-white mb-1 uppercase tracking-tighter">הופעל בהצלחה!</h3>
+              <p className="text-slate-400 font-bold mb-5 text-[10px]">שודרגת ל-Premium בחינם</p>
               <button 
                 onClick={() => onPlanSelect('PRO')} 
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-6 rounded-2xl shadow-xl shadow-indigo-500/40 transition-all text-2xl flex items-center justify-center gap-3 active:scale-95"
+                className="w-full bg-indigo-600 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/40"
               >
-                עבור לאתר
-                <ArrowRight size={28} />
+                עבור לאתר <ArrowRight size={20} />
               </button>
             </div>
           )}
         </div>
-
-        <p className="text-center text-[10px] text-slate-600 font-bold italic mb-10">
-          * המחירים הם לחודש בחיוב שנתי מראש.
-        </p>
       </div>
     </div>
   );
