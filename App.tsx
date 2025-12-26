@@ -9,8 +9,6 @@ import Login from './components/Login';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 
-// --- רכיבים פנימיים ---
-
 const ForgotPasswordView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [email, setEmail] = useState('');
   const handleSubmit = async () => {
@@ -74,16 +72,15 @@ const App: React.FC = () => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const nextStartTimeRef = useRef(0);
 
-  // --- טעינה ראשונית וזיכרון ---
   useEffect(() => {
-    // 1. טיפול באיפוס סיסמה
+    // איפוס סיסמה
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     if (params.get('view') === 'RESET' && token) {
         setResetToken(token); setView('RESET'); window.history.replaceState({}, document.title, "/"); return;
     }
 
-    // 2. בדיקת זיכרון מקומי (LocalStorage)
+    // כניסה אוטומטית
     const savedUserStr = localStorage.getItem('lingolive_user');
     if (savedUserStr) {
       try {
@@ -94,13 +91,16 @@ const App: React.FC = () => {
       } catch (e) { localStorage.removeItem('lingolive_user'); }
     }
 
-    // 3. טעינת הגדרות כלליות
+    // --- טעינת הגדרות SEO, Analytics ו-GTM ---
     fetch('/api/admin/settings').then(res => res.json()).then(data => {
         if(data.ads) setAds(data.ads);
         if(data.settings) {
             const getVal = (k: string) => data.settings.find((s: any) => s.key === k)?.value;
+            
+            // 1. כותרת
             const t = getVal('seo_title'); if(t) document.title = t;
-            // הזרקת סקריפטים אם יש
+            
+            // 2. Google Analytics
             const gaId = getVal('google_analytics_id');
             if(gaId && !document.getElementById('ga-script')) {
                 const s1 = document.createElement('script'); s1.id='ga-script'; s1.async=true; s1.src=`https://www.googletagmanager.com/gtag/js?id=${gaId}`;
@@ -108,37 +108,72 @@ const App: React.FC = () => {
                 const s2 = document.createElement('script'); s2.innerHTML=`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`;
                 document.head.appendChild(s2);
             }
+
+            // 3. Google Console (אימות)
+            const consoleId = getVal('google_console_id');
+            if (consoleId) {
+                // בדיקה אם המשתמש הזין תגית מלאה או רק את הקוד
+                // אנו מנקים הכל ומשאירים רק את התוכן של ה-content
+                let content = consoleId;
+                if (consoleId.includes('content="')) {
+                    const match = consoleId.match(/content="([^"]+)"/);
+                    if (match) content = match[1];
+                }
+
+                if (!document.querySelector('meta[name="google-site-verification"]')) {
+                    const metaTag = document.createElement('meta');
+                    metaTag.setAttribute('name', 'google-site-verification');
+                    metaTag.setAttribute('content', content);
+                    document.head.appendChild(metaTag);
+                }
+            }
+
+            // 4. Google Tag Manager (GTM)
+            const gtmId = getVal('google_tag_manager_id');
+            if (gtmId && !document.getElementById('gtm-script')) {
+                // חלק ה-Head
+                const script = document.createElement('script');
+                script.id = 'gtm-script';
+                script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+                new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+                j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+                'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+                })(window,document,'script','dataLayer','${gtmId}');`;
+                document.head.appendChild(script);
+
+                // חלק ה-Body (NoScript)
+                const noscript = document.createElement('noscript');
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.googletagmanager.com/ns.html?id=${gtmId}`;
+                iframe.height = "0";
+                iframe.width = "0";
+                iframe.style.display = "none";
+                iframe.style.visibility = "hidden";
+                noscript.appendChild(iframe);
+                document.body.prepend(noscript);
+            }
         }
     }).catch(() => {});
   }, []);
 
   const handleLoginSuccess = (user: any, shouldSave = true) => {
-    // שמירה בזיכרון המקומי
     if (shouldSave) {
         localStorage.setItem('lingolive_user', JSON.stringify(user));
     }
     setUserData(user);
 
-    // --- לוגיקת הניתוב המוחלטת ---
-    // 1. מנהל נכנס תמיד
     if (user.role === 'ADMIN' || user.email === 'mgilady@gmail.com') {
         setView('APP');
         return;
     }
-    
-    // 2. מנוי PRO נכנס תמיד
     if (user.plan === 'PRO' || user.plan === 'Pro') {
         setView('APP');
         return;
     }
-
-    // 3. משתמש חינם שכבר התחיל להשתמש נכנס תמיד
     if (user.tokens_used > 0) {
         setView('APP');
         return;
     }
-
-    // 4. רק משתמש חדש לגמרי וחינם הולך למחירים
     setView('PRICING');
   };
 
@@ -149,7 +184,6 @@ const App: React.FC = () => {
     if (activeSessionRef.current) stopConversation();
   };
 
-  // --- אודיו ו-Gemini ---
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
     if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
@@ -213,7 +247,6 @@ const App: React.FC = () => {
   
   if (view === 'PRICING') return (
       <div className="relative h-screen">
-          {/* כאן התיקון: מעבירים userEmail לרכיב ה-Pricing */}
           <Pricing 
               onPlanSelect={(plan) => { if(userData) setUserData({...userData, plan}); setView('APP'); }} 
               userEmail={userData?.email}
@@ -224,7 +257,6 @@ const App: React.FC = () => {
       </div>
   );
 
-  // חזרה לניהול מרעננת את האתר
   if (view === 'ADMIN') return <Admin onBack={() => window.location.reload()} />;
 
   return (
