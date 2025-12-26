@@ -9,7 +9,7 @@ export interface PracticeScenario {
   id: string;
   icon: string;
   title: string; // המפתח לתרגום
-  systemInstruction: string;
+  systemInstruction: string; // ההוראה ל-AI
 }
 
 export enum ConnectionStatus {
@@ -35,30 +35,34 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { code: 'nl-NL', name: 'Dutch', flag: '🇳🇱', voiceName: 'nl-NL-ColetteNeural' }
 ];
 
-// --- 4 המודולים החדשים ---
+// --- הגדרת המודולים המדויקת לפי בקשתך ---
 export const SCENARIOS: PracticeScenario[] = [
   { 
     id: 'live', 
     icon: '🎙️', 
     title: 'mode_live', 
-    systemInstruction: 'Act as a precise interpreter. Translate exactly what is said between the two languages instantly. Do not add conversational filler.' 
+    // הוראה: תרגום דו-כיווני מדויק, רק מה שנאמר, בלי תוספות
+    systemInstruction: 'You are a precise bi-directional translator. Listen to the input. If it is in SOURCE_LANG, translate it exactly to TARGET_LANG. If it is in TARGET_LANG, translate it exactly to SOURCE_LANG. Speak ONLY the translation. Do NOT add pleasantries, explanations, or fillers. Do not be "smart". Just translate exactly what was said.' 
   },
   { 
     id: 'simul', 
     icon: '🎧', 
     title: 'mode_simul', 
-    systemInstruction: 'Act as a simultaneous interpreter. Provide continuous, fluid translation of the speech stream. Prioritize speed and flow.' 
+    // הוראה: תרגום סימולטני מהיר, ללא השהיות
+    systemInstruction: 'You are a simultaneous interpreter translating from SOURCE_LANG to TARGET_LANG. Your goal is SPEED. Translate the speech stream continuously and instantly. Do not wait for full sentences or pause to think. Output the translation in real-time, matching the speaker\'s pace.' 
   },
   { 
     id: 'chat', 
     icon: '💬', 
     title: 'mode_chat', 
-    systemInstruction: 'Act as a friendly conversation partner. Engage in a natural dialogue in the target language. Ask follow-up questions.' 
+    // הוראה: שיחה רגילה בשפת היעד (ללא תרגום)
+    systemInstruction: 'You are a friendly conversation partner. Do NOT translate. Hold a natural conversation entirely in TARGET_LANG. Listen to what the user says and respond with relevant questions or comments to keep the chat going. Act like a human friend chatting.' 
   },
   { 
     id: 'learn', 
     icon: '🎓', 
     title: 'mode_learn', 
-    systemInstruction: 'Act as a language tutor. Help the user learn. Correct their grammar mistakes gently and explain new vocabulary when necessary.' 
+    // הוראה: לימוד ותיקון טעויות
+    systemInstruction: 'You are a language teacher teaching TARGET_LANG. Converse with the user. When the user speaks, listen for mistakes. If they make a mistake, explicitly say: "The correct way to say that is..." and repeat their sentence correctly. Then continue the conversation.' 
   }
 ];
