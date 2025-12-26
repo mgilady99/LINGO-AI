@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Image as ImageIcon, Globe, Users, ArrowRight, Ticket, Settings, Activity, FileSpreadsheet } from 'lucide-react';
+import { Globe, Users, Ticket, Settings, Activity, FileSpreadsheet } from 'lucide-react';
 
 const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'SETTINGS' | 'CODES' | 'USERS'>('SETTINGS');
@@ -10,20 +10,20 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
   
-  // שדות SEO
+  // שדות SEO וניהול
   const [seoSettings, setSeoSettings] = useState({
     seo_title: '',
     seo_description: '',
     seo_keywords: '',
     google_analytics_id: '',
-    google_console_id: ''
+    google_console_id: '',
+    google_tag_manager_id: '' // שדה חדש ל-GTM
   });
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        // טעינת הגדרות
         const settingsRes = await fetch('/api/admin/settings');
         if (settingsRes.ok) {
             const data = await settingsRes.json();
@@ -39,7 +39,6 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             }
             setSeoSettings(newSettings);
         }
-        // טעינת קודים
         try {
             const codesRes = await fetch('/api/admin/codes');
             if (codesRes.ok) setPromoCodes(await codesRes.json());
@@ -60,7 +59,7 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       for (const [key, value] of Object.entries(seoSettings)) {
           await fetch('/api/admin/settings', { method: 'POST', body: JSON.stringify({ type: 'SETTING', data: { key, value } }) });
       }
-      alert('הגדרות SEO נשמרו בהצלחה!');
+      alert('הגדרות נשמרו בהצלחה!');
   };
 
   const downloadUsersCSV = () => {
@@ -77,13 +76,11 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   return (
     <div className="h-screen overflow-y-auto bg-slate-950 text-slate-200 rtl font-['Inter'] p-8">
-      {/* כותרת */}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-black text-indigo-400">פאנל ניהול</h1>
         <button onClick={onBack} className="bg-slate-800 px-4 py-2 rounded-xl border border-white/10 hover:bg-slate-700">חזרה לאתר</button>
       </div>
 
-      {/* תפריט עליון (טאבים) */}
       <div className="flex gap-4 mb-8 border-b border-white/10 pb-4 overflow-x-auto">
         <button onClick={() => setActiveTab('SETTINGS')} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${activeTab === 'SETTINGS' ? 'bg-indigo-600 text-white' : 'bg-slate-900'}`}>
             <Settings size={18}/> הגדרות
@@ -96,10 +93,8 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </button>
       </div>
 
-      {/* תוכן: הגדרות ו-SEO */}
       {activeTab === 'SETTINGS' && (
         <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in">
-            {/* SEO Section */}
             <div className="bg-slate-900 p-8 rounded-3xl border border-white/10 shadow-2xl">
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-400"><Globe/> הגדרות SEO וכלים</h3>
                 <div className="space-y-5">
@@ -115,15 +110,26 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <label className="block text-sm font-bold text-slate-400 mb-2">מילות מפתח</label>
                         <input value={seoSettings.seo_keywords} onChange={e => setSeoSettings({...seoSettings, seo_keywords: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none" placeholder="מילים מופרדות בפסיק..." />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <input value={seoSettings.google_analytics_id} onChange={e => setSeoSettings({...seoSettings, google_analytics_id: e.target.value})} className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm dir-ltr" placeholder="Google Analytics ID" />
-                        <input value={seoSettings.google_console_id} onChange={e => setSeoSettings({...seoSettings, google_console_id: e.target.value})} className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm dir-ltr" placeholder="Console ID" />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-white/10 pt-4 mt-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Google Analytics ID</label>
+                            <input value={seoSettings.google_analytics_id} onChange={e => setSeoSettings({...seoSettings, google_analytics_id: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm dir-ltr font-mono" placeholder="G-XXXXXXXXXX" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Google Console ID (HTML Tag)</label>
+                            <input value={seoSettings.google_console_id} onChange={e => setSeoSettings({...seoSettings, google_console_id: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm dir-ltr font-mono" placeholder="הקוד מתוך ה-meta tag" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Google Tag Manager ID</label>
+                            <input value={seoSettings.google_tag_manager_id} onChange={e => setSeoSettings({...seoSettings, google_tag_manager_id: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm dir-ltr font-mono" placeholder="GTM-XXXXXX" />
+                        </div>
                     </div>
+
                     <button onClick={saveAllSEO} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg mt-4">שמור הגדרות</button>
                 </div>
             </div>
             
-            {/* Ads Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-20">
               {[1, 2, 3, 4].map(id => {
                 const ad = ads.find(a => a.slot_id === id) || { slot_id: id, title: '', image_url: '', target_url: '' };
@@ -141,7 +147,6 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </div>
       )}
 
-      {/* תוכן: משתמשים */}
       {activeTab === 'USERS' && (
         <div className="animate-in fade-in">
            <div className="flex justify-between items-center mb-6">
@@ -163,7 +168,6 @@ const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </div>
       )}
 
-      {/* תוכן: קודים */}
       {activeTab === 'CODES' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in">
             {promoCodes.map((c) => (
