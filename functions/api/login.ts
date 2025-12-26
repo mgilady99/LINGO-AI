@@ -20,34 +20,30 @@ export async function onRequestPost(context) {
          return new Response(JSON.stringify({ error: "סיסמה שגויה" }), { status: 401 });
       }
 
-      // --- התיקון הגדול ---
-      // אם המשתמש הוא כבר PRO, לא מעניין אותנו איזה קוד הוא הזין.
-      // אנחנו מכניסים אותו ישר, כדי לא לקבל שגיאת "קוד משומש".
+      // --- תיקון: אם המשתמש הוא כבר PRO, מתעלמים מהקוד ומחזירים הצלחה ---
       if (user.plan === 'PRO') {
-         // מחזירים את המשתמש כמו שהוא
          return new Response(JSON.stringify(user));
       }
 
       // אם הוא עדיין FREE ומנסה להשתדרג עכשיו עם קוד
       if (promoCode) {
         try {
-          // בודקים אם הקוד תקין ולא נוצל
           const codeRecord = await env.DB.prepare("SELECT * FROM promo_codes WHERE code = ? AND is_used = 0").bind(promoCode).first();
           
           if (codeRecord) {
-            // יש! קוד תקין. משדרגים את המשתמש.
+            // שדרוג המשתמש
             await env.DB.prepare("UPDATE users SET plan = 'PRO', token_limit = 1000000 WHERE email = ?").bind(email).run();
-            // מסמנים את הקוד כמשומש
+            // סימון הקוד כמשומש
             await env.DB.prepare("UPDATE promo_codes SET is_used = 1 WHERE code = ?").bind(promoCode).run();
             
-            // מעדכנים את האובייקט בזיכרון כדי להחזיר תשובה מעודכנת
+            // עדכון האובייקט המקומי
             user.plan = 'PRO';
             user.token_limit = 1000000;
           } else {
              return new Response(JSON.stringify({ error: "קוד ההטבה אינו תקין או שכבר נוצל" }), { status: 400 });
           }
         } catch (e) {
-          // מתעלמים משגיאות טבלה
+          // מתעלמים משגיאות טבלה (אם הטבלה לא קיימת למשל)
         }
       }
 
