@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeScenario } from './types';
@@ -47,14 +47,7 @@ const App: React.FC = () => {
       const outputCtx = outputAudioContextRef.current;
       const outputNode = outputCtx.createGain(); outputNode.connect(outputCtx.destination);
 
-      // הנחיות מחמירות לתרגום נקי ללא שאלות מיותרות
-      const sysInst = `ACT AS A PURE INTERPRETER. 
-      - Source: ${nativeLang.name} or ${targetLang.name}.
-      - Task: Translate EVERYTHING you hear immediately.
-      - DO NOT ask questions like "Should I translate?" or "Anything else?".
-      - DO NOT provide any meta-talk or introduction.
-      - OUTPUT ONLY THE TRANSLATED TEXT AS AUDIO.
-      - Be fast, accurate, and professional.`;
+      const sysInst = `ACT AS A PURE INTERPRETER. Translate everything between ${nativeLang.name} and ${targetLang.name}. No small talk.`;
       
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.0-flash-exp',
@@ -87,7 +80,6 @@ const App: React.FC = () => {
         config: { 
           responseModalities: [Modality.AUDIO], 
           systemInstruction: sysInst,
-          generationConfig: { temperature: 0.1 },
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
         }
       });
@@ -95,9 +87,11 @@ const App: React.FC = () => {
     } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); }
   };
 
+  // תנאי מעבר בין מסכים
   if (view === 'LOGIN') return <Login onLoginSuccess={() => setView('PRICING')} />;
   if (view === 'PRICING') return <Pricing onPlanSelect={(plan) => { setUserPlan(plan); setView('APP'); }} />;
 
+  // המסך הראשי של האפליקציה (זה מה שיחליף את המסך השחור)
   return (
     <div className="h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden rtl font-['Inter']">
       <header className="p-4 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-xl">
@@ -112,8 +106,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* אזור הבקרה */}
-        <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5 overflow-y-auto">
+        <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5">
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-2xl">
             <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-2xl">
               <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent text-xs font-bold outline-none w-full text-center">
@@ -146,14 +139,14 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* פרסומת מאיר גלעדי */}
-        <div className="hidden md:flex flex-1 bg-slate-950 p-8 flex-col gap-6 items-center justify-start overflow-y-auto">
+        {/* מרחב הפרסום של מאיר גלעדי */}
+        <div className="hidden md:flex flex-1 bg-slate-950 p-8 flex flex-col gap-6 items-center justify-start overflow-y-auto">
           <div className="w-full max-w-sm bg-slate-900 rounded-[3rem] border border-white/5 p-8 text-center shadow-2xl">
             <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white font-black text-2xl">MG</div>
             <h4 className="text-3xl font-black text-white mb-1">מאיר גלעדי</h4>
             <p className="text-indigo-400 font-bold text-lg mb-6">מומחה לנדל"ן מסחרי</p>
             <div className="bg-slate-800/50 rounded-2xl py-4 mb-6">
-               <span className="text-slate-300 font-black text-2xl tracking-widest">052-2530087</span>
+               <span className="text-slate-300 font-black text-2xl tracking-widest font-mono">052-2530087</span>
             </div>
             <a href="https://mgilady.wixsite.com/meirgilady" target="_blank" className="bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl inline-flex items-center gap-2 transition-all font-bold text-sm">
               לאתר האינטרנט <ExternalLink size={14} />
