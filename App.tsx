@@ -10,7 +10,6 @@ import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 
 const App: React.FC = () => {
-  // --- ניהול מצבים (State) ---
   const [view, setView] = useState<'LOGIN' | 'PRICING' | 'APP' | 'ADMIN'>('LOGIN');
   const [userData, setUserData] = useState<any>(null);
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
@@ -20,7 +19,6 @@ const App: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ads, setAds] = useState<any[]>([]);
 
-  // --- Refs לאודיו ---
   const activeSessionRef = useRef<any>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -28,49 +26,30 @@ const App: React.FC = () => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const nextStartTimeRef = useRef(0);
 
-  // --- טעינת הגדרות ופרסומות בעלייה ---
   useEffect(() => {
-    fetch('/api/admin/settings')
-      .then(res => res.json())
-      .then(data => {
-        if(data.ads) setAds(data.ads);
-        if(data.settings) {
-          const seoTitle = data.settings.find((s: any) => s.key === 'seo_title');
-          if(seoTitle) document.title = seoTitle.value;
-        }
-      })
-      .catch(err => console.error("Error loading settings:", err));
+    fetch('/api/admin/settings').then(res => res.json()).then(data => {
+      if(data.ads) setAds(data.ads);
+      if(data.settings) {
+        const seoTitle = data.settings.find((s: any) => s.key === 'seo_title');
+        if(seoTitle) document.title = seoTitle.value;
+      }
+    }).catch(() => {});
   }, []);
 
-  // --- לוגיקה חכמה לכניסת משתמש (כולל מעקף מנהל) ---
   const handleLoginSuccess = (user: any) => {
-    console.log("User logged in data:", user);
-
-    // >>>>> מעקף חירום למאיר גלעדי <<<<<
-    // מוודא שאתה מקבל הרשאות ניהול וכניסה מידית
-    if (user.email === 'mgilady@gmail.com') {
-        const adminUser = { ...user, role: 'ADMIN', plan: 'PRO' };
-        setUserData(adminUser);
-        setView('APP'); // כניסה ישירה לאפליקציה
-        return; 
-    }
-    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
     setUserData(user);
-
-    // ניתוב משתמשים רגילים
+    // אם המשתמש הוא מנהל (וזה יקרה בוודאות בגלל המעקף ב-Login)
     if (user.role === 'ADMIN') {
       setView('APP');
     } else if (user.plan && user.plan !== 'FREE') {
-      setView('APP'); // משתמש משלם נכנס ישר
+      setView('APP');
     } else if (user.tokens_used > 0) {
-      setView('APP'); // משתמש קיים נכנס ישר
+      setView('APP');
     } else {
-      setView('PRICING'); // משתמש חדש לגמרי -> הצעת מחיר
+      setView('PRICING');
     }
   };
 
-  // --- ניהול שיחה (Gemini AI) ---
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
     if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
@@ -83,23 +62,16 @@ const App: React.FC = () => {
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) { alert("חסר מפתח API"); return; }
-    
     try {
       setStatus(ConnectionStatus.CONNECTING);
       const ai = new GoogleGenAI({ apiKey });
-      
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
       if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
-      
-      await inputAudioContextRef.current.resume(); 
-      await outputAudioContextRef.current.resume();
-      
+      await inputAudioContextRef.current.resume(); await outputAudioContextRef.current.resume();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
-      
       const outputCtx = outputAudioContextRef.current;
-      const outputNode = outputCtx.createGain(); 
-      outputNode.connect(outputCtx.destination);
+      const outputNode = outputCtx.createGain(); outputNode.connect(outputCtx.destination);
 
       const sysInst = `ACT AS A PURE INTERPRETER. Translate between ${nativeLang.name} and ${targetLang.name}. Scenario: ${selectedScenario.title}. No small talk.`;
       
@@ -138,28 +110,15 @@ const App: React.FC = () => {
         }
       });
       activeSessionRef.current = await sessionPromise;
-    } catch (e) { 
-      console.error(e);
-      setStatus(ConnectionStatus.DISCONNECTED); 
-      alert("תקלה בהתחברות למיקרופון או לשרת");
-    }
+    } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); alert("תקלה בהתחברות"); }
   };
 
-  // --- ניתוב תצוגות (Views) ---
   if (view === 'LOGIN') return <Login onLoginSuccess={handleLoginSuccess} />;
-  
-  if (view === 'PRICING') return <Pricing onPlanSelect={(plan) => { 
-      if(userData) setUserData({...userData, plan}); 
-      setView('APP'); 
-  }} />;
-
+  if (view === 'PRICING') return <Pricing onPlanSelect={(plan) => { if(userData) setUserData({...userData, plan}); setView('APP'); }} />;
   if (view === 'ADMIN') return <Admin onBack={() => setView('APP')} />;
 
-  // --- התצוגה הראשית (APP) ---
   return (
     <div className="h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden rtl font-['Inter']">
-      
-      {/* Header */}
       <header className="p-4 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg"><Headphones size={18} /></div>
@@ -167,13 +126,13 @@ const App: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* כפתור ניהול - מוצג אם המשתמש הוא ADMIN */}
+          {/* כפתור אדמין - לבן ובולט במיוחד! */}
           {userData?.role === 'ADMIN' && (
             <button 
               onClick={() => setView('ADMIN')}
-              className="flex items-center gap-1 text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-full font-bold hover:bg-red-500/30 transition-all"
+              className="flex items-center gap-2 bg-white text-indigo-900 px-5 py-2 rounded-full font-black hover:bg-slate-200 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse"
             >
-              <Settings size={12} /> ניהול
+              <Settings size={16} /> כניסת אדמין
             </button>
           )}
           
@@ -184,12 +143,10 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        
-        {/* Sidebar Controls */}
         <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5">
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-2xl">
+            {/* שאר הקוד של האפליקציה נשאר זהה */}
             <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-2xl">
               <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent text-xs font-bold outline-none w-full text-center">
                 {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
@@ -208,33 +165,22 @@ const App: React.FC = () => {
               ))}
             </div>
           </div>
-
           <div className="flex flex-col items-center py-6 flex-1 justify-center relative">
             <Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} />
-            <button 
-              onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} 
-              className={`mt-8 px-12 py-5 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 transition-all active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}
-            >
-              <Mic size={28} /> {status === ConnectionStatus.CONNECTED ? 'הפסק' : 'התחל'}
-            </button>
+            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className={`mt-8 px-12 py-5 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 transition-all active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}><Mic size={28} /> {status === ConnectionStatus.CONNECTED ? 'הפסק' : 'התחל'}</button>
             {(isSpeaking || status === ConnectionStatus.CONNECTED) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
         </div>
 
-        {/* Ads Area (Dynamic from DB) */}
         <div className="hidden md:flex flex-1 bg-slate-950 p-8 flex-col gap-6 items-center justify-start overflow-y-auto">
            {ads.length === 0 ? (
-             <div className="w-full max-w-sm bg-slate-900 rounded-[3rem] border border-white/5 p-8 text-center shadow-2xl opacity-50">
-               <p className="text-slate-500 text-sm">טוען נתונים...</p>
-             </div>
+             <div className="w-full max-w-sm bg-slate-900 rounded-[3rem] border border-white/5 p-8 text-center shadow-2xl opacity-50"><p className="text-slate-500 text-sm">טוען נתונים...</p></div>
            ) : (
              ads.filter(ad => ad.is_active).map(ad => (
                <div key={ad.slot_id} className="w-full max-w-sm bg-slate-900 rounded-[3rem] border border-white/5 p-8 text-center shadow-2xl relative group hover:border-indigo-500/30 transition-colors">
                  {ad.image_url && <img src={ad.image_url} alt={ad.title} className="w-full h-40 object-cover rounded-2xl mb-4" />}
                  <h4 className="text-2xl font-black text-white mb-1">{ad.title}</h4>
-                 <a href={ad.target_url} target="_blank" className="mt-4 bg-indigo-600/20 text-indigo-400 px-6 py-2 rounded-xl inline-flex items-center gap-2 font-bold text-sm hover:bg-indigo-600 hover:text-white transition-all">
-                    לפרטים נוספים <ExternalLink size={14} />
-                 </a>
+                 <a href={ad.target_url} target="_blank" className="mt-4 bg-indigo-600/20 text-indigo-400 px-6 py-2 rounded-xl inline-flex items-center gap-2 font-bold text-sm hover:bg-indigo-600 hover:text-white transition-all">לפרטים נוספים <ExternalLink size={14} /></a>
                </div>
              ))
            )}
