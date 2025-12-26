@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings, KeyRound, LogOut, Globe } from 'lucide-react';
+import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings, KeyRound, LogOut, Globe, ArrowLeftRight } from 'lucide-react';
 import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeScenario } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
@@ -8,9 +8,9 @@ import AudioVisualizer from './components/AudioVisualizer';
 import Login from './components/Login';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
-import { translations } from './translations'; // ייבוא המילון שיצרנו
+import { translations } from './translations';
 
-// --- רכיבי עזר (שכחתי סיסמה / איפוס) ---
+// --- רכיבי עזר ---
 
 const ForgotPasswordView: React.FC<{ onBack: () => void, t: any }> = ({ onBack, t }) => {
   const [email, setEmail] = useState('');
@@ -61,8 +61,8 @@ const App: React.FC = () => {
   const [resetToken, setResetToken] = useState('');
   
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
-  const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]); // עברית (או שפה נלמדת)
-  const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]); // אנגלית (או שפת ממשק)
+  const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]); // ברירת מחדל: עברית
+  const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]); // ברירת מחדל: אנגלית
   const [selectedScenario, setSelectedScenario] = useState<PracticeScenario>(SCENARIOS[0]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ads, setAds] = useState<any[]>([]);
@@ -74,25 +74,20 @@ const App: React.FC = () => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const nextStartTimeRef = useRef(0);
 
-  // --- פונקציית התרגום החכמה ---
   const t = (key: string) => {
-    const langCode = nativeLang.code; // לוקח את הקוד הנוכחי (למשל he-IL)
-    // בודק אם יש תרגום במילון. אם אין - לוקח אנגלית.
+    const langCode = nativeLang.code; 
     return translations[langCode]?.[key] || translations['en-US']?.[key] || key;
   };
 
-  // קביעת כיוון הטקסט (ימין לשמאל אם עברית או ערבית)
   const dir = nativeLang.code === 'he-IL' || nativeLang.code === 'ar-SA' ? 'rtl' : 'ltr';
 
   useEffect(() => {
-    // איפוס סיסמה
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     if (params.get('view') === 'RESET' && token) {
         setResetToken(token); setView('RESET'); window.history.replaceState({}, document.title, "/"); return;
     }
 
-    // כניסה אוטומטית (זוכר משתמש)
     const savedUserStr = localStorage.getItem('lingolive_user');
     if (savedUserStr) {
       try {
@@ -103,14 +98,12 @@ const App: React.FC = () => {
       } catch (e) { localStorage.removeItem('lingolive_user'); }
     }
 
-    // טעינת הגדרות SEO ופרסומות
     fetch('/api/admin/settings').then(res => res.json()).then(data => {
         if(data.ads) setAds(data.ads);
         if(data.settings) {
             const getVal = (k: string) => data.settings.find((s: any) => s.key === k)?.value;
             const t = getVal('seo_title'); if(t) document.title = t;
             
-            // Analytics & GTM Injection code... (אותו קוד מהשלבים הקודמים)
             const gaId = getVal('google_analytics_id');
             if(gaId && !document.getElementById('ga-script')) {
                 const s1 = document.createElement('script'); s1.id='ga-script'; s1.async=true; s1.src=`https://www.googletagmanager.com/gtag/js?id=${gaId}`;
@@ -179,7 +172,6 @@ const App: React.FC = () => {
       const sessionPromise = ai.live.connect({ model: 'gemini-2.0-flash-exp', config: { responseModalities: [Modality.AUDIO], systemInstruction: sysInst } });
       activeSessionRef.current = await sessionPromise;
       
-      // הזרמת אודיו פנימה והחוצה (כמו בקוד המקורי)
       const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
       const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
       scriptProcessor.onaudioprocess = (e) => {
@@ -188,10 +180,9 @@ const App: React.FC = () => {
       };
       source.connect(scriptProcessor); scriptProcessor.connect(inputAudioContextRef.current!.destination);
 
-      // קבלת תשובות מה-AI
       (async () => {
           try {
-            for await (const msg of activeSessionRef.current.listen()) { // שימוש בלולאה למניעת חסימה
+            for await (const msg of activeSessionRef.current.listen()) {
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData) {
                     setIsSpeaking(true);
@@ -218,7 +209,6 @@ const App: React.FC = () => {
     <Login 
         onLoginSuccess={handleLoginSuccess} 
         onForgotPassword={() => setView('FORGOT')}
-        // מעבירים את השפה ופונקציית התרגום
         nativeLang={nativeLang}
         setNativeLang={setNativeLang}
         t={t}
@@ -230,7 +220,7 @@ const App: React.FC = () => {
           <Pricing 
               onPlanSelect={(plan) => { if(userData) setUserData({...userData, plan}); setView('APP'); }} 
               userEmail={userData?.email}
-              t={t} // מעבירים תרגום
+              t={t} 
           />
           <button onClick={handleLogout} className={`fixed top-4 ${dir === 'rtl' ? 'left-4' : 'right-4'} z-50 bg-slate-800 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg hover:bg-red-500 flex items-center gap-2`}>
             <LogOut size={14}/> {t('logout')}
@@ -264,15 +254,23 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
         <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5">
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-2xl">
-            {/* בורר השפות: שים לב שהבחירה בשפת האם (למטה) משנה את כל הממשק */}
-            <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-2xl">
-              <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent text-xs font-bold outline-none w-full text-center">
-                {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-              </select>
-              <ChevronRight size={14} className={`text-indigo-500 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
-              <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent text-xs font-bold outline-none w-full text-center">
-                {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-              </select>
+            
+            {/* --- בורר שפות עם כותרות --- */}
+            <div className="bg-slate-800/40 p-3 rounded-2xl">
+              <div className="flex justify-between px-2 mb-2 text-[10px] font-bold text-indigo-300 uppercase tracking-widest">
+                  {/* ב-RTL, האלמנט הראשון (native) יהיה בצד ימין, והשני (target) בצד שמאל */}
+                  <span>{t('label_native')}</span>
+                  <span>{t('label_target')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-2 text-xs font-bold outline-none w-full text-center">
+                  {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                </select>
+                <ArrowLeftRight size={14} className="text-indigo-500 shrink-0" />
+                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-2 text-xs font-bold outline-none w-full text-center">
+                  {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                </select>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-3">
