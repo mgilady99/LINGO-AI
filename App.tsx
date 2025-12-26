@@ -158,67 +158,100 @@ const App: React.FC = () => {
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) { alert("חסר מפתח API"); return; }
+    
     try {
+      console.log("Starting conversation...");
       setStatus(ConnectionStatus.CONNECTING);
-      const ai = new GoogleGenAI({ apiKey });
+
+      // 1. אתחול מנגנון האודיו (חובה עבור קליטה ושידור)
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
       if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
+
+      // 2. "הערת" האודיו – דפדפנים חוסמים אודיו אם לא עושים את זה
+      if (inputAudioContextRef.current.state === 'suspended') {
+          await inputAudioContextRef.current.resume();
+          console.log("Input Audio Resumed");
+      }
+      if (outputAudioContextRef.current.state === 'suspended') {
+          await outputAudioContextRef.current.resume();
+          console.log("Output Audio Resumed");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       
-      // חשוב: הפעלת אודיו כדי לשמוע את התשובה
-      await inputAudioContextRef.current.resume(); 
-      await outputAudioContextRef.current.resume();
-      
+      // בקשת גישה למיקרופון
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
+      
       const outputCtx = outputAudioContextRef.current;
-      const outputNode = outputCtx.createGain(); outputNode.connect(outputCtx.destination);
+      const outputNode = outputCtx.createGain(); 
+      outputNode.connect(outputCtx.destination);
 
-      // --- הגדרת המוח: החלפת ה-Placeholders בשפות שנבחרו ---
-      // שימוש ב-Regex גלובלי (/g) כדי להחליף את כל המופעים של SOURCE_LANG ו-TARGET_LANG
+      // החלפת ה-Placeholders (שפות) בתוך ההוראה של המודול
       const instructions = selectedScenario.systemInstruction
         .replace(/SOURCE_LANG/g, nativeLang.name)
         .replace(/TARGET_LANG/g, targetLang.name);
 
+      console.log("Instructions:", instructions);
+
+      // התחברות ל-Gemini
       const sessionPromise = ai.live.connect({ 
         model: 'gemini-2.0-flash-exp', 
         config: { 
             responseModalities: [Modality.AUDIO], 
-            // כאן נשלחת ההוראה הספציפית למודול
             systemInstruction: instructions,
-            // בחירת קול נעים
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
         } 
       });
       activeSessionRef.current = await sessionPromise;
       
+      // טיפול במיקרופון (שליחה ל-AI)
       const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
       const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
       scriptProcessor.onaudioprocess = (e) => {
           const inputData = e.inputBuffer.getChannelData(0).slice();
-          if (activeSessionRef.current) activeSessionRef.current.sendRealtimeInput({ media: createPcmBlob(inputData) });
+          if (activeSessionRef.current) {
+             activeSessionRef.current.sendRealtimeInput({ media: createPcmBlob(inputData) });
+          }
       };
-      source.connect(scriptProcessor); scriptProcessor.connect(inputAudioContextRef.current!.destination);
+      source.connect(scriptProcessor); 
+      scriptProcessor.connect(inputAudioContextRef.current!.destination);
 
+      // קבלת תשובות (השמעה)
       (async () => {
           try {
             for await (const msg of activeSessionRef.current.listen()) {
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData) {
+                    console.log("Audio received from AI");
                     setIsSpeaking(true);
+                    
                     nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
                     const buffer = await decodeAudioData(decode(audioData), outputCtx, 24000, 1);
+                    
                     const audioSource = outputCtx.createBufferSource();
-                    audioSource.buffer = buffer; audioSource.connect(outputNode);
-                    audioSource.onended = () => { sourcesRef.current.delete(audioSource); if (sourcesRef.current.size === 0) setIsSpeaking(false); };
+                    audioSource.buffer = buffer; 
+                    audioSource.connect(outputNode);
+                    
+                    audioSource.onended = () => { 
+                        sourcesRef.current.delete(audioSource); 
+                        if (sourcesRef.current.size === 0) setIsSpeaking(false); 
+                    };
+                    
                     audioSource.start(nextStartTimeRef.current);
-                    nextStartTimeRef.current += buffer.duration; sourcesRef.current.add(audioSource);
+                    nextStartTimeRef.current += buffer.duration; 
+                    sourcesRef.current.add(audioSource);
                 }
             }
-          } catch(e) {}
+          } catch(e) { console.error("Error in loop:", e); }
       })();
 
       setStatus(ConnectionStatus.CONNECTED);
-    } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); alert("תקלה בהתחברות"); }
+    } catch (e) { 
+        console.error(e);
+        setStatus(ConnectionStatus.DISCONNECTED); 
+        alert("תקלה בהתחברות - בדוק הרשאות מיקרופון ואינטרנט"); 
+    }
   };
 
   if (view === 'FORGOT') return <ForgotPasswordView onBack={() => setView('LOGIN')} t={t} />;
