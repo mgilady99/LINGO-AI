@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings } from 'lucide-react';
+import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings, ArrowRight, KeyRound } from 'lucide-react';
 import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeScenario } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
@@ -9,9 +9,67 @@ import Login from './components/Login';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 
+// רכיב פנימי קטן לשחזור סיסמה (כדי לחסוך קובץ)
+const ForgotPasswordView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [email, setEmail] = useState('');
+  
+  const handleSubmit = async () => {
+    if(!email) return;
+    const res = await fetch('/api/forgot-password', {
+        method: 'POST', 
+        body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    // בהדמיה - אנחנו מראים את הלינק למשתמש
+    if(data.devLink) {
+        prompt("העתק את הלינק הזה והדבק בדפדפן כדי לאפס סיסמה (במציאות זה נשלח למייל):", window.location.origin + data.devLink);
+    } else {
+        alert(data.message || "נשלח מייל שחזור");
+    }
+  };
+
+  return (
+    <div className="flex h-screen items-center justify-center bg-[#0f172a] rtl text-white">
+        <div className="w-full max-w-sm p-8 bg-[#1e293b] rounded-3xl border border-white/10 text-center">
+            <h2 className="text-2xl font-bold mb-4">שחזור סיסמה</h2>
+            <p className="text-slate-400 mb-6 text-sm">הכנס את האימייל שלך ונשלח לך קישור לאיפוס</p>
+            <input className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 mb-4 text-center" 
+                   placeholder="אימייל" value={email} onChange={e => setEmail(e.target.value)} />
+            <button onClick={handleSubmit} className="w-full bg-indigo-600 py-3 rounded-xl font-bold mb-4">שלח קישור</button>
+            <button onClick={onBack} className="text-slate-500 text-sm">חזרה לכניסה</button>
+        </div>
+    </div>
+  );
+};
+
+// רכיב פנימי לאיפוס סיסמה (אחרי לחיצה על הלינק)
+const ResetPasswordView: React.FC<{ token: string, onSuccess: () => void }> = ({ token, onSuccess }) => {
+    const [pass, setPass] = useState('');
+    const handleReset = async () => {
+        const res = await fetch('/api/reset-password', {
+            method: 'POST', body: JSON.stringify({ token, newPassword: pass })
+        });
+        if(res.ok) { alert('הסיסמה שונתה בהצלחה! התחבר מחדש.'); onSuccess(); }
+        else { alert('שגיאה באיפוס'); }
+    };
+    return (
+        <div className="flex h-screen items-center justify-center bg-[#0f172a] rtl text-white">
+            <div className="w-full max-w-sm p-8 bg-[#1e293b] rounded-3xl border border-white/10 text-center">
+                <h2 className="text-2xl font-bold mb-4">יצירת סיסמה חדשה</h2>
+                <input type="password" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 mb-4 text-center" 
+                       placeholder="סיסמה חדשה" value={pass} onChange={e => setPass(e.target.value)} />
+                <button onClick={handleReset} className="w-full bg-green-600 py-3 rounded-xl font-bold">עדכן סיסמה</button>
+            </div>
+        </div>
+    );
+};
+
 const App: React.FC = () => {
-  const [view, setView] = useState<'LOGIN' | 'PRICING' | 'APP' | 'ADMIN'>('LOGIN');
+  const [view, setView] = useState<'LOGIN' | 'PRICING' | 'APP' | 'ADMIN' | 'FORGOT' | 'RESET'>('LOGIN');
   const [userData, setUserData] = useState<any>(null);
+  const [resetToken, setResetToken] = useState('');
+  
+  // משתנים רגילים של האפליקציה...
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]);
   const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]);
@@ -27,6 +85,18 @@ const App: React.FC = () => {
   const nextStartTimeRef = useRef(0);
 
   useEffect(() => {
+    // בדיקה אם הגענו מקישור איפוס סיסמה
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const viewParam = params.get('view');
+    
+    if (viewParam === 'RESET' && token) {
+        setResetToken(token);
+        setView('RESET');
+        // מנקה את ה-URL
+        window.history.replaceState({}, document.title, "/");
+    }
+
     fetch('/api/admin/settings').then(res => res.json()).then(data => {
       if(data.ads) setAds(data.ads);
       if(data.settings) {
@@ -37,17 +107,18 @@ const App: React.FC = () => {
   }, []);
 
   const handleLoginSuccess = (user: any) => {
-    setUserData(user);
-    // אם המשתמש הוא מנהל (וזה יקרה בוודאות בגלל המעקף ב-Login)
-    if (user.role === 'ADMIN') {
-      setView('APP');
-    } else if (user.plan && user.plan !== 'FREE') {
-      setView('APP');
-    } else if (user.tokens_used > 0) {
-      setView('APP');
-    } else {
-      setView('PRICING');
+    // מעקף מנהל מעודכן לסיסמה החדשה
+    if (user.email === 'mgilady@gmail.com') {
+        const adminUser = { ...user, role: 'ADMIN', plan: 'PRO' };
+        setUserData(adminUser);
+        setView('APP');
+        return; 
     }
+    setUserData(user);
+    if (user.role === 'ADMIN') setView('APP');
+    else if (user.plan && user.plan !== 'FREE') setView('APP');
+    else if (user.tokens_used > 0) setView('APP');
+    else setView('PRICING');
   };
 
   const stopConversation = useCallback(() => {
@@ -72,9 +143,7 @@ const App: React.FC = () => {
       micStreamRef.current = stream;
       const outputCtx = outputAudioContextRef.current;
       const outputNode = outputCtx.createGain(); outputNode.connect(outputCtx.destination);
-
       const sysInst = `ACT AS A PURE INTERPRETER. Translate between ${nativeLang.name} and ${targetLang.name}. Scenario: ${selectedScenario.title}. No small talk.`;
-      
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.0-flash-exp',
         callbacks: {
@@ -103,17 +172,16 @@ const App: React.FC = () => {
           },
           onclose: () => setStatus(ConnectionStatus.DISCONNECTED)
         },
-        config: { 
-          responseModalities: [Modality.AUDIO], 
-          systemInstruction: sysInst,
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
-        }
+        config: { responseModalities: [Modality.AUDIO], systemInstruction: sysInst, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } } }
       });
       activeSessionRef.current = await sessionPromise;
     } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); alert("תקלה בהתחברות"); }
   };
 
-  if (view === 'LOGIN') return <Login onLoginSuccess={handleLoginSuccess} />;
+  // --- ניתוב תצוגות ---
+  if (view === 'FORGOT') return <ForgotPasswordView onBack={() => setView('LOGIN')} />;
+  if (view === 'RESET') return <ResetPasswordView token={resetToken} onSuccess={() => setView('LOGIN')} />;
+  if (view === 'LOGIN') return <Login onLoginSuccess={handleLoginSuccess} onForgotPassword={() => setView('FORGOT')} />;
   if (view === 'PRICING') return <Pricing onPlanSelect={(plan) => { if(userData) setUserData({...userData, plan}); setView('APP'); }} />;
   if (view === 'ADMIN') return <Admin onBack={() => setView('APP')} />;
 
@@ -124,18 +192,12 @@ const App: React.FC = () => {
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg"><Headphones size={18} /></div>
           <span className="font-black text-sm uppercase tracking-tighter">LingoLive Pro</span>
         </div>
-        
         <div className="flex items-center gap-3">
-          {/* כפתור אדמין - לבן ובולט במיוחד! */}
           {userData?.role === 'ADMIN' && (
-            <button 
-              onClick={() => setView('ADMIN')}
-              className="flex items-center gap-2 bg-white text-indigo-900 px-5 py-2 rounded-full font-black hover:bg-slate-200 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse"
-            >
+            <button onClick={() => setView('ADMIN')} className="flex items-center gap-2 bg-white text-indigo-900 px-5 py-2 rounded-full font-black hover:bg-slate-200 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse">
               <Settings size={16} /> כניסת אדמין
             </button>
           )}
-          
           <div className="flex items-center gap-2 px-3 py-1 bg-indigo-600/20 border border-indigo-500/30 rounded-full">
             <ShieldCheck size={12} className="text-indigo-400" />
             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{userData?.plan || 'FREE'}</span>
@@ -146,7 +208,6 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
         <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5">
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-2xl">
-            {/* שאר הקוד של האפליקציה נשאר זהה */}
             <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-2xl">
               <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent text-xs font-bold outline-none w-full text-center">
                 {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
