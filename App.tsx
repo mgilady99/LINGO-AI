@@ -8,9 +8,10 @@ import AudioVisualizer from './components/AudioVisualizer';
 import Login from './components/Login';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
-import { translations } from './translations'; // ייבוא התרגומים
+import { translations } from './translations'; // ייבוא המילון שיצרנו
 
-// --- רכיבי עזר קטנים ---
+// --- רכיבי עזר (שכחתי סיסמה / איפוס) ---
+
 const ForgotPasswordView: React.FC<{ onBack: () => void, t: any }> = ({ onBack, t }) => {
   const [email, setEmail] = useState('');
   const handleSubmit = async () => {
@@ -60,8 +61,8 @@ const App: React.FC = () => {
   const [resetToken, setResetToken] = useState('');
   
   const [status, setStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
-  const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]); // שפה נלמדת
-  const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]); // שפת ממשק (שפת אם)
+  const [targetLang, setTargetLang] = useState<Language>(SUPPORTED_LANGUAGES[0]); // עברית (או שפה נלמדת)
+  const [nativeLang, setNativeLang] = useState<Language>(SUPPORTED_LANGUAGES[1]); // אנגלית (או שפת ממשק)
   const [selectedScenario, setSelectedScenario] = useState<PracticeScenario>(SCENARIOS[0]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ads, setAds] = useState<any[]>([]);
@@ -73,25 +74,25 @@ const App: React.FC = () => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const nextStartTimeRef = useRef(0);
 
-  // --- פונקציית התרגום ---
+  // --- פונקציית התרגום החכמה ---
   const t = (key: string) => {
-    const langCode = nativeLang.code; // למשל 'he-IL' או 'en-US'
-    // אם אין תרגום לשפה הזו, נשתמש באנגלית כברירת מחדל
+    const langCode = nativeLang.code; // לוקח את הקוד הנוכחי (למשל he-IL)
+    // בודק אם יש תרגום במילון. אם אין - לוקח אנגלית.
     return translations[langCode]?.[key] || translations['en-US']?.[key] || key;
   };
-  
-  // כיוון טקסט (RTL/LTR) לפי השפה
+
+  // קביעת כיוון הטקסט (ימין לשמאל אם עברית או ערבית)
   const dir = nativeLang.code === 'he-IL' || nativeLang.code === 'ar-SA' ? 'rtl' : 'ltr';
 
   useEffect(() => {
-    // בדיקת איפוס סיסמה
+    // איפוס סיסמה
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     if (params.get('view') === 'RESET' && token) {
         setResetToken(token); setView('RESET'); window.history.replaceState({}, document.title, "/"); return;
     }
 
-    // כניסה אוטומטית
+    // כניסה אוטומטית (זוכר משתמש)
     const savedUserStr = localStorage.getItem('lingolive_user');
     if (savedUserStr) {
       try {
@@ -102,10 +103,37 @@ const App: React.FC = () => {
       } catch (e) { localStorage.removeItem('lingolive_user'); }
     }
 
-    // טעינת הגדרות
+    // טעינת הגדרות SEO ופרסומות
     fetch('/api/admin/settings').then(res => res.json()).then(data => {
         if(data.ads) setAds(data.ads);
-        // ... (קוד SEO קיים נשאר כאן, מקוצר לצורך הבהירות) ...
+        if(data.settings) {
+            const getVal = (k: string) => data.settings.find((s: any) => s.key === k)?.value;
+            const t = getVal('seo_title'); if(t) document.title = t;
+            
+            // Analytics & GTM Injection code... (אותו קוד מהשלבים הקודמים)
+            const gaId = getVal('google_analytics_id');
+            if(gaId && !document.getElementById('ga-script')) {
+                const s1 = document.createElement('script'); s1.id='ga-script'; s1.async=true; s1.src=`https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+                document.head.appendChild(s1);
+                const s2 = document.createElement('script'); s2.innerHTML=`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`;
+                document.head.appendChild(s2);
+            }
+            const consoleId = getVal('google_console_id');
+            if (consoleId) {
+                let content = consoleId.includes('content="') ? consoleId.match(/content="([^"]+)"/)?.[1] || consoleId : consoleId;
+                if (!document.querySelector('meta[name="google-site-verification"]')) {
+                    const metaTag = document.createElement('meta'); metaTag.setAttribute('name', 'google-site-verification'); metaTag.setAttribute('content', content); document.head.appendChild(metaTag);
+                }
+            }
+            const gtmId = getVal('google_tag_manager_id');
+            if (gtmId && !document.getElementById('gtm-script')) {
+                const script = document.createElement('script'); script.id = 'gtm-script';
+                script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId}');`;
+                document.head.appendChild(script);
+                const noscript = document.createElement('noscript');
+                const iframe = document.createElement('iframe'); iframe.src = `https://www.googletagmanager.com/ns.html?id=${gtmId}`; iframe.height = "0"; iframe.width = "0"; iframe.style.display = "none"; iframe.style.visibility = "hidden"; noscript.appendChild(iframe); document.body.prepend(noscript);
+            }
+        }
     }).catch(() => {});
   }, []);
 
@@ -114,7 +142,7 @@ const App: React.FC = () => {
     setUserData(user);
 
     if (user.role === 'ADMIN' || user.email === 'mgilady@gmail.com') { setView('APP'); return; }
-    if (user.plan === 'PRO' || user.plan === 'Pro' || user.plan === 'BASIC' || user.plan === 'ADVANCED') { setView('APP'); return; }
+    if (['PRO', 'Pro', 'BASIC', 'ADVANCED'].includes(user.plan)) { setView('APP'); return; }
     if (user.tokens_used > 0) { setView('APP'); return; }
     setView('PRICING');
   };
@@ -126,7 +154,6 @@ const App: React.FC = () => {
     if (activeSessionRef.current) stopConversation();
   };
 
-  // ... (פונקציות אודיו נשארות זהות) ...
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
     if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
@@ -136,9 +163,8 @@ const App: React.FC = () => {
   }, []);
 
   const startConversation = async () => {
-    // ... (אותו קוד אודיו כמו קודם) ...
     const apiKey = import.meta.env.VITE_API_KEY;
-    if (!apiKey) { alert("Missing API Key"); return; }
+    if (!apiKey) { alert("חסר מפתח API"); return; }
     try {
       setStatus(ConnectionStatus.CONNECTING);
       const ai = new GoogleGenAI({ apiKey });
@@ -152,9 +178,37 @@ const App: React.FC = () => {
       const sysInst = `ACT AS A PURE INTERPRETER. Translate between ${nativeLang.name} and ${targetLang.name}. Scenario: ${selectedScenario.title}. No small talk.`;
       const sessionPromise = ai.live.connect({ model: 'gemini-2.0-flash-exp', config: { responseModalities: [Modality.AUDIO], systemInstruction: sysInst } });
       activeSessionRef.current = await sessionPromise;
-      // ... (callbacks) ...
-      setStatus(ConnectionStatus.CONNECTED); // מקוצר
-    } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); alert("Connection Error"); }
+      
+      // הזרמת אודיו פנימה והחוצה (כמו בקוד המקורי)
+      const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
+      const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
+      scriptProcessor.onaudioprocess = (e) => {
+          const inputData = e.inputBuffer.getChannelData(0).slice();
+          if (activeSessionRef.current) activeSessionRef.current.sendRealtimeInput({ media: createPcmBlob(inputData) });
+      };
+      source.connect(scriptProcessor); scriptProcessor.connect(inputAudioContextRef.current!.destination);
+
+      // קבלת תשובות מה-AI
+      (async () => {
+          try {
+            for await (const msg of activeSessionRef.current.listen()) { // שימוש בלולאה למניעת חסימה
+                const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+                if (audioData) {
+                    setIsSpeaking(true);
+                    nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
+                    const buffer = await decodeAudioData(decode(audioData), outputCtx, 24000, 1);
+                    const audioSource = outputCtx.createBufferSource();
+                    audioSource.buffer = buffer; audioSource.connect(outputNode);
+                    audioSource.onended = () => { sourcesRef.current.delete(audioSource); if (sourcesRef.current.size === 0) setIsSpeaking(false); };
+                    audioSource.start(nextStartTimeRef.current);
+                    nextStartTimeRef.current += buffer.duration; sourcesRef.current.add(audioSource);
+                }
+            }
+          } catch(e) {}
+      })();
+
+      setStatus(ConnectionStatus.CONNECTED);
+    } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); alert("תקלה בהתחברות"); }
   };
 
   if (view === 'FORGOT') return <ForgotPasswordView onBack={() => setView('LOGIN')} t={t} />;
@@ -164,7 +218,7 @@ const App: React.FC = () => {
     <Login 
         onLoginSuccess={handleLoginSuccess} 
         onForgotPassword={() => setView('FORGOT')}
-        // מעבירים את השפה ופונקציית התרגום ללוגין
+        // מעבירים את השפה ופונקציית התרגום
         nativeLang={nativeLang}
         setNativeLang={setNativeLang}
         t={t}
@@ -210,7 +264,7 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
         <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5">
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-2xl">
-            {/* בחירת שפות - שים לב שכאן בוחרים את שפת האם, וזה משנה את כל הממשק */}
+            {/* בורר השפות: שים לב שהבחירה בשפת האם (למטה) משנה את כל הממשק */}
             <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-2xl">
               <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-transparent text-xs font-bold outline-none w-full text-center">
                 {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
@@ -225,7 +279,7 @@ const App: React.FC = () => {
               {SCENARIOS.map(s => (
                 <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-slate-800/40 text-slate-500'}`}>
                   <span className="text-2xl">{s.icon}</span>
-                  <span className="text-[10px] font-black uppercase text-center leading-none">{s.title}</span>
+                  <span className="text-[10px] font-black uppercase text-center leading-none">{t('scenario')}: {s.title}</span>
                 </button>
               ))}
             </div>
