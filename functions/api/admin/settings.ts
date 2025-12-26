@@ -4,14 +4,19 @@ export async function onRequest(context) {
   // 1. קריאת נתונים (GET)
   if (request.method === 'GET') {
     try {
+      // שליפת פרסומות
       const ads = await env.DB.prepare("SELECT * FROM ads ORDER BY slot_id").all();
+      
+      // שליפת הגדרות
       const settings = await env.DB.prepare("SELECT * FROM settings").all();
-      const stats = await env.DB.prepare("SELECT COUNT(*) as total_users FROM users").first();
+      
+      // --- השינוי: שליפת רשימת המשתמשים המלאה (במקום רק לספור אותם) ---
+      const users = await env.DB.prepare("SELECT email, plan, role, tokens_used FROM users ORDER BY rowid DESC").all();
       
       return new Response(JSON.stringify({ 
         ads: ads.results, 
         settings: settings.results,
-        stats 
+        users: users.results // מחזירים את הרשימה המלאה
       }));
     } catch (e) {
       return new Response(JSON.stringify({ error: e.message }), { status: 500 });
