@@ -168,7 +168,7 @@ const App: React.FC = () => {
       micStreamRef.current = stream;
       const outputCtx = outputAudioContextRef.current;
       const outputNode = outputCtx.createGain(); outputNode.connect(outputCtx.destination);
-      const sysInst = `ACT AS A PURE INTERPRETER. Translate between ${nativeLang.name} and ${targetLang.name}. Scenario: ${selectedScenario.title}. No small talk.`;
+      const sysInst = `ACT AS A PURE INTERPRETER. Translate between ${nativeLang.name} and ${targetLang.name}. Mode: ${selectedScenario.title} (${selectedScenario.systemInstruction}). No small talk.`;
       const sessionPromise = ai.live.connect({ model: 'gemini-2.0-flash-exp', config: { responseModalities: [Modality.AUDIO], systemInstruction: sysInst } });
       activeSessionRef.current = await sessionPromise;
       
@@ -255,7 +255,6 @@ const App: React.FC = () => {
         <div className="w-full md:w-[450px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5">
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-2xl">
             
-            {/* שפות - הגדלתי את הטקסט בתוך ה-Select */}
             <div className="bg-slate-800/40 p-3 rounded-2xl">
               <div className="flex justify-between px-2 mb-2 text-xs font-black text-indigo-300 uppercase tracking-widest">
                   <span>{t('label_native')}</span>
@@ -276,9 +275,9 @@ const App: React.FC = () => {
               {SCENARIOS.map(s => (
                 <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-slate-800/40 text-slate-500'}`}>
                   <span className="text-3xl">{s.icon}</span>
-                  {/* הסרתי את המילה "תרחיש:" והגדלתי את הפונט משמעותית */}
-                  <span className="text-sm font-black uppercase text-center leading-tight px-1">
-                      {s.title}
+                  {/* כאן השינוי: פונט גדול ומודגש, ושימוש בפונקציית תרגום */}
+                  <span className="text-lg font-black uppercase text-center leading-tight px-1">
+                      {t(s.title)}
                   </span>
                 </button>
               ))}
@@ -287,7 +286,6 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center py-6 flex-1 justify-center relative">
             <Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} />
             
-            {/* כפתור מיקרופון - טקסט ענק */}
             <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className={`mt-8 px-10 py-5 rounded-full font-black text-2xl shadow-2xl flex items-center gap-3 transition-all active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
                 <Mic size={32} /> 
                 {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
