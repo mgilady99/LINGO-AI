@@ -46,25 +46,25 @@ const Pricing: React.FC<{ onPlanSelect: (plan: string) => void }> = ({ onPlanSel
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-['Inter'] rtl overflow-y-auto pb-10">
-      <div className="max-w-6xl mx-auto px-6 pt-10">
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-['Inter'] rtl overflow-y-auto">
+      <div className="max-w-6xl mx-auto px-4 py-10 flex flex-col items-center">
         
-        {/* כותרת דף */}
+        {/* כותרת מותאמת למובייל */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl md:text-5xl font-black text-white mb-3 uppercase tracking-tighter">
+          <h1 className="text-3xl md:text-5xl font-black text-white mb-2 uppercase tracking-tighter">
             בחר את המסלול שלך
           </h1>
           <p className="text-slate-400 text-sm md:text-lg font-bold">
-            הצטרף לאלפי משתמשים שכבר מדברים בכל שפה
+            הצטרף לקהילת המשתמשים שמתקשרים בכל שפה
           </p>
         </div>
 
-        {/* רשת המסלולים - מותאם למובייל (grid-cols-1) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {/* רשימת מסלולים - אחד מתחת לשני במובייל */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {plans.map((plan) => (
             <div 
               key={plan.id} 
-              className="bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 md:p-8 flex flex-col shadow-2xl hover:border-indigo-500/50 transition-all relative overflow-hidden group"
+              className="bg-slate-900 border border-white/10 rounded-[2.5rem] p-6 md:p-8 flex flex-col shadow-2xl transition-all"
             >
               <div className="mb-4 text-3xl">{plan.icon}</div>
               <h2 className="text-2xl font-black text-white mb-1">{plan.name}</h2>
@@ -85,15 +85,9 @@ const Pricing: React.FC<{ onPlanSelect: (plan: string) => void }> = ({ onPlanSel
                 ))}
               </ul>
 
-              {plan.yearly && (
-                <p className="text-[9px] text-slate-500 mb-4 font-bold text-center italic">
-                  * חיוב שנתי של ${plan.yearly}
-                </p>
-              )}
-
               <button 
                 onClick={() => onPlanSelect(plan.id)}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2"
               >
                 {plan.buttonText}
               </button>
@@ -101,8 +95,8 @@ const Pricing: React.FC<{ onPlanSelect: (plan: string) => void }> = ({ onPlanSel
           ))}
         </div>
 
-        {/* אזור קוד הטבה / הודעת הצלחה */}
-        <div className="max-w-md mx-auto bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 text-center shadow-2xl mb-10">
+        {/* אזור קוד ההטבה - כאן יופיע הכפתור הגדול שביקשת */}
+        <div className="w-full max-w-md bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 text-center shadow-2xl mb-10">
           {!isSuccess ? (
             <>
               <div className="flex items-center justify-center gap-2 mb-4 text-slate-400 font-black text-sm">
@@ -113,13 +107,13 @@ const Pricing: React.FC<{ onPlanSelect: (plan: string) => void }> = ({ onPlanSel
                 <input 
                   type="text" 
                   placeholder="הכנס קוד כאן" 
-                  className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-3 text-white outline-none focus:border-indigo-500 font-bold text-center"
+                  className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white outline-none focus:border-indigo-500 font-bold text-center"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                 />
                 <button 
                   onClick={handleRedeem} 
-                  className="w-full bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-2xl font-black transition-all"
+                  className="w-full bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-2xl font-black transition-all"
                 >
                   הפעל קוד
                 </button>
@@ -130,24 +124,27 @@ const Pricing: React.FC<{ onPlanSelect: (plan: string) => void }> = ({ onPlanSel
               <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4">
                 <Check size={32} className="text-emerald-500" />
               </div>
-              <h3 className="text-2xl font-black text-white mb-1">קוד הטבה הופעל!</h3>
-              <p className="text-slate-400 font-bold mb-6 text-sm">שודרגת למסלול Premium בחינם</p>
+              <h3 className="text-2xl font-black text-white mb-1 uppercase tracking-tighter">
+                קוד הטבה הופעל!
+              </h3>
+              <p className="text-slate-400 font-bold mb-8 text-sm italic">
+                שודרגת למסלול Premium בחינם
+              </p>
               
-              {/* הכפתור הגדול שביקשת למעבר לאתר */}
+              {/* זהו הכפתור הגדול והברור למעבר לאתר */}
               <button 
                 onClick={() => onPlanSelect('PRO')} 
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl shadow-xl shadow-emerald-500/20 transition-all text-xl flex items-center justify-center gap-3 animate-pulse"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-6 rounded-2xl shadow-xl shadow-indigo-500/40 transition-all text-2xl flex items-center justify-center gap-3 active:scale-95"
               >
-                עבור לאתר עכשיו
-                <ArrowRight size={24} />
+                עבור לאתר
+                <ArrowRight size={28} />
               </button>
             </div>
           )}
         </div>
 
-        {/* הערות שוליים */}
-        <p className="text-center text-[10px] text-slate-600 font-bold px-4">
-          באותיות קטנות: המחירים הם לחודש בחיוב שנתי. החיוב יתבצע מראש עבור 12 חודשים.
+        <p className="text-center text-[10px] text-slate-600 font-bold italic mb-10">
+          * המחירים הם לחודש בחיוב שנתי מראש.
         </p>
       </div>
     </div>
