@@ -8,8 +8,8 @@ export interface Language {
 export interface PracticeScenario {
   id: string;
   icon: string;
-  title: string; // המפתח לתרגום
-  systemInstruction: string; // ההוראה ל-AI
+  title: string;
+  systemInstruction: string;
 }
 
 export enum ConnectionStatus {
@@ -35,34 +35,34 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { code: 'nl-NL', name: 'Dutch', flag: '🇳🇱', voiceName: 'nl-NL-ColetteNeural' }
 ];
 
-// --- הגדרת המודולים המדויקת לפי בקשתך ---
+// --- 4 המודולים המדויקים ---
 export const SCENARIOS: PracticeScenario[] = [
   { 
     id: 'live', 
     icon: '🎙️', 
     title: 'mode_live', 
-    // הוראה: תרגום דו-כיווני מדויק, רק מה שנאמר, בלי תוספות
-    systemInstruction: 'You are a precise bi-directional translator. Listen to the input. If it is in SOURCE_LANG, translate it exactly to TARGET_LANG. If it is in TARGET_LANG, translate it exactly to SOURCE_LANG. Speak ONLY the translation. Do NOT add pleasantries, explanations, or fillers. Do not be "smart". Just translate exactly what was said.' 
+    // הוראה: תרגום נקי ומדויק
+    systemInstruction: 'You are a precise bi-directional translator. Listen to the user. Translate their exact words from SOURCE_LANG to TARGET_LANG (or vice versa). Do not summarize. Do not answer questions. Just translate.' 
   },
   { 
     id: 'simul', 
     icon: '🎧', 
     title: 'mode_simul', 
-    // הוראה: תרגום סימולטני מהיר, ללא השהיות
-    systemInstruction: 'You are a simultaneous interpreter translating from SOURCE_LANG to TARGET_LANG. Your goal is SPEED. Translate the speech stream continuously and instantly. Do not wait for full sentences or pause to think. Output the translation in real-time, matching the speaker\'s pace.' 
+    // הוראה: תרגום מהיר ורציף
+    systemInstruction: 'You are a simultaneous interpreter. Your priority is SPEED. Translate the speech stream continuously from SOURCE_LANG to TARGET_LANG. Keep the flow natural and fast.' 
   },
   { 
     id: 'chat', 
     icon: '💬', 
     title: 'mode_chat', 
-    // הוראה: שיחה רגילה בשפת היעד (ללא תרגום)
-    systemInstruction: 'You are a friendly conversation partner. Do NOT translate. Hold a natural conversation entirely in TARGET_LANG. Listen to what the user says and respond with relevant questions or comments to keep the chat going. Act like a human friend chatting.' 
+    // הוראה: שיחה רגילה בשפת היעד
+    systemInstruction: 'You are a friendly conversation partner. Do NOT translate. Converse naturally with the user in TARGET_LANG. Ask questions and keep the chat going.' 
   },
   { 
     id: 'learn', 
     icon: '🎓', 
     title: 'mode_learn', 
     // הוראה: לימוד ותיקון טעויות
-    systemInstruction: 'You are a language teacher teaching TARGET_LANG. Converse with the user. When the user speaks, listen for mistakes. If they make a mistake, explicitly say: "The correct way to say that is..." and repeat their sentence correctly. Then continue the conversation.' 
+    systemInstruction: 'You are a language teacher. Converse in TARGET_LANG. If the user makes a mistake, stop and gently correct them in SOURCE_LANG, then encourage them to try again.' 
   }
 ];
