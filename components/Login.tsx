@@ -19,7 +19,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onForgotPassword }) => {
     const cleanPass = password.trim();
     const cleanPromo = promoCode.trim();
 
-    // מעקף מנהל (Hardcoded Bypass)
+    // מעקף מנהל
     if (cleanEmail === 'mgilady@gmail.com' && cleanPass === 'MEIR@mmmeir12321') {
         onLoginSuccess({ email: 'mgilady@gmail.com', role: 'ADMIN', plan: 'PRO', tokens_used: 0 });
         return;
@@ -37,7 +37,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onForgotPassword }) => {
       const data = await res.json();
       
       if (res.ok) {
-        if(data.plan === 'PRO' && cleanPromo) alert("קוד ההטבה התקבל בהצלחה! מנוי PRO הופעל.");
+        if(data.plan === 'PRO' && cleanPromo) alert("קוד ההטבה התקבל! מנוי PRO הופעל.");
         onLoginSuccess(data);
       } else {
         alert(data.error || "שגיאה בכניסה");
@@ -75,7 +75,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onForgotPassword }) => {
             </button>
           </div>
 
-          {/* כפתור להצגת שדה קוד הטבה */}
           {!showPromo ? (
             <button onClick={() => setShowPromo(true)} className="text-xs text-indigo-400 font-bold hover:text-indigo-300 flex items-center justify-center gap-1 w-full">
               <Ticket size={14} /> יש לי קוד הטבה
@@ -93,8 +92,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onForgotPassword }) => {
             onClick={handleLogin} disabled={isLoading}
             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-xl transition-all shadow-lg active:scale-95 text-xl mt-4 border border-indigo-400/30"
           >
-            {/* כאן היה התיקון: התחבר עכשיו */}
-            {isLoading ? "מתחבר..." : (promoCode ? "הפעל קוד והכנס אותי ->" : "התחבר עכשיו ->")}
+            {/* הטקסט תוקן כאן */}
+            {isLoading ? "מתחבר..." : "התחבר"}
           </button>
         </div>
         
