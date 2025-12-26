@@ -10,8 +10,6 @@ import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import { translations } from './translations';
 
-// --- רכיבי עזר ---
-
 const ForgotPasswordView: React.FC<{ onBack: () => void, t: any }> = ({ onBack, t }) => {
   const [email, setEmail] = useState('');
   const handleSubmit = async () => {
@@ -52,8 +50,6 @@ const ResetPasswordView: React.FC<{ token: string, onSuccess: () => void }> = ({
         </div>
     );
 };
-
-// --- האפליקציה הראשית ---
 
 const App: React.FC = () => {
   const [view, setView] = useState<'LOGIN' | 'PRICING' | 'APP' | 'ADMIN' | 'FORGOT' | 'RESET'>('LOGIN');
@@ -138,7 +134,6 @@ const App: React.FC = () => {
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
       if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
 
-      // הפעלת האודיו (חובה!)
       await inputAudioContextRef.current.resume();
       await outputAudioContextRef.current.resume();
 
@@ -172,11 +167,14 @@ const App: React.FC = () => {
           const inputData = e.inputBuffer.getChannelData(0).slice();
           if (activeSessionRef.current) {
               const pcmData = createPcmBlob(inputData);
-              // שליחה במבנה הנכון (זה פותר את ה-Unsupported blob type)
-              activeSessionRef.current.sendRealtimeInput({
-                  mimeType: "audio/pcm;rate=16000",
-                  data: pcmData
-              });
+              // --- התיקון הקריטי: עטיפה בתוך inlineData ---
+              // זה מונע את השגיאה Unsupported blob type
+              activeSessionRef.current.sendRealtimeInput([{
+                  inlineData: {
+                      mimeType: "audio/pcm;rate=16000",
+                      data: pcmData
+                  }
+              }]);
           }
       };
       
