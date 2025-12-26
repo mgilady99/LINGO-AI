@@ -163,13 +163,32 @@ const App: React.FC = () => {
       const ai = new GoogleGenAI({ apiKey });
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
       if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
-      await inputAudioContextRef.current.resume(); await outputAudioContextRef.current.resume();
+      
+      // חשוב: הפעלת אודיו כדי לשמוע את התשובה
+      await inputAudioContextRef.current.resume(); 
+      await outputAudioContextRef.current.resume();
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
       const outputCtx = outputAudioContextRef.current;
       const outputNode = outputCtx.createGain(); outputNode.connect(outputCtx.destination);
-      const sysInst = `ACT AS A PURE INTERPRETER. Translate between ${nativeLang.name} and ${targetLang.name}. Mode: ${selectedScenario.title} (${selectedScenario.systemInstruction}). No small talk.`;
-      const sessionPromise = ai.live.connect({ model: 'gemini-2.0-flash-exp', config: { responseModalities: [Modality.AUDIO], systemInstruction: sysInst } });
+
+      // --- הגדרת המוח: החלפת ה-Placeholders בשפות שנבחרו ---
+      // שימוש ב-Regex גלובלי (/g) כדי להחליף את כל המופעים של SOURCE_LANG ו-TARGET_LANG
+      const instructions = selectedScenario.systemInstruction
+        .replace(/SOURCE_LANG/g, nativeLang.name)
+        .replace(/TARGET_LANG/g, targetLang.name);
+
+      const sessionPromise = ai.live.connect({ 
+        model: 'gemini-2.0-flash-exp', 
+        config: { 
+            responseModalities: [Modality.AUDIO], 
+            // כאן נשלחת ההוראה הספציפית למודול
+            systemInstruction: instructions,
+            // בחירת קול נעים
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
+        } 
+      });
       activeSessionRef.current = await sessionPromise;
       
       const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
@@ -275,7 +294,6 @@ const App: React.FC = () => {
               {SCENARIOS.map(s => (
                 <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-slate-800/40 text-slate-500'}`}>
                   <span className="text-3xl">{s.icon}</span>
-                  {/* כאן השינוי: פונט גדול ומודגש, ושימוש בפונקציית תרגום */}
                   <span className="text-lg font-black uppercase text-center leading-tight px-1">
                       {t(s.title)}
                   </span>
