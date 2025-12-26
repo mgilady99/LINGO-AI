@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, Headphones, XCircle, ChevronRight, RefreshCw, Trash2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Mic, MicOff, Headphones, ChevronRight, Trash2, ExternalLink } from 'lucide-react';
 import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeScenario, TranscriptionEntry } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
@@ -21,9 +21,8 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // זיהוי שפת מכשיר אוטומטית בעת הטעינה הראשונה
   useEffect(() => {
-    const sysLangCode = navigator.language.split('-')[0]; // למשל 'he' או 'en'
+    const sysLangCode = navigator.language.split('-')[0];
     const detected = SUPPORTED_LANGUAGES.find(l => l.code.startsWith(sysLangCode)) || SUPPORTED_LANGUAGES[1];
     setNativeLang(detected);
   }, []);
@@ -81,29 +80,30 @@ const App: React.FC = () => {
       const outputNode = outputCtx.createGain();
       outputNode.connect(outputCtx.destination);
 
-      // הנחיות קשיחות למודל למניעת "שכחת" שפות
       const nName = nativeLang.name;
       const tName = targetLang.name;
       let sysInst = "";
 
       if (selectedScenario.id === 'simultaneous') {
-        sysInst = `STRICT TRANSLATOR between ${nName} and ${tName}. 
-        If input is ${nName}, translate ONLY to ${tName}. 
-        If input is ${tName}, translate ONLY to ${nName}. 
-        Do not talk to me. Do not ask questions. Only spoken translation output.`;
+        sysInst = `TWO-WAY INTERPRETER: ${nName} <-> ${tName}. Translate dialogue immediately. Do not ask questions. Output ONLY the translation.`;
       } else if (selectedScenario.id === 'translator') {
-        sysInst = `LECTURE MODE: Translate everything you hear into ${nName} immediately and continuously. DO NOT stop or ask for help. Output ONLY the translation.`;
+        // מודול תרגום סימולטני משופר - הזרמה רציפה
+        sysInst = `ACT AS A PROFESSIONAL BROADCAST INTERPRETER. 
+        Target Language: ${nName}. 
+        Listen to the source audio and translate into ${nName} IN A CONTINUOUS FLOW. 
+        Do NOT wait for full sentences. Use short, clear phrases to maintain zero lag. 
+        Do NOT repeat the source. Do NOT pause. Just stream the translation into ${nName}.`;
       } else if (selectedScenario.id === 'casual') {
-        sysInst = `CHAT PARTNER: Speak ONLY in ${tName}. Keep responses very short and natural. Do not translate.`;
+        sysInst = `Speak ONLY in ${tName}. Friendly and brief.`;
       } else if (selectedScenario.id === 'learn') {
-        sysInst = `TUTOR: Speak in ${tName}. Be very brief. After speaking, provide a tiny correction for any mistakes I made in brackets [].`;
+        sysInst = `Tutor in ${tName}. Correct errors in [brackets] after your reply.`;
       }
 
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.0-flash-exp',
         callbacks: {
           onopen: () => {
-            setStatus(ConnectionStatus.CONNECTED); // כאן אנחנו מעדכנים את הסטטוס להפעלת הכפתור
+            setStatus(ConnectionStatus.CONNECTED);
             const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
             const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
             scriptProcessor.onaudioprocess = (e) => {
@@ -135,7 +135,7 @@ const App: React.FC = () => {
         config: { 
           responseModalities: [Modality.AUDIO], 
           systemInstruction: sysInst,
-          generationConfig: { temperature: 0.1 },
+          generationConfig: { temperature: 0.2 },
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
         }
       });
@@ -152,13 +152,15 @@ const App: React.FC = () => {
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg"><Headphones size={20} /></div>
           <div className="flex flex-col">
             <span className="font-black text-sm uppercase">{ui.title}</span>
-            <span className={`text-[10px] font-black uppercase ${status === ConnectionStatus.CONNECTED ? 'text-emerald-400' : 'text-slate-400'}`}>{status}</span>
+            <span className={`text-[10px] font-black uppercase ${status === ConnectionStatus.CONNECTED ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {status === ConnectionStatus.CONNECTED ? ui.stop : status}
+            </span>
           </div>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="w-full md:w-[480px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto">
+        <div className="w-full md:w-[480px] flex flex-col p-6 gap-6 bg-slate-900/30 border-r border-white/5 overflow-y-auto scrollbar-thin">
           <div className="w-full bg-slate-900/90 rounded-[2rem] border border-white/10 p-5 flex flex-col gap-4 shadow-xl">
             <div className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-[1.5rem]">
               <div className="flex-1 text-center">
@@ -212,7 +214,7 @@ const App: React.FC = () => {
                 <p className="text-indigo-400 font-bold text-xl mb-4">מומחה לנדל"ן מסחרי</p>
                 <div className="flex flex-col gap-2">
                   <span className="text-slate-300 font-black text-2xl tracking-widest">052-2530087</span>
-                  <a href="https://mgilady.wixsite.com/meirgilady" target="_blank" className="text-indigo-500 hover:text-white underline text-lg mt-4 flex items-center gap-1 font-bold">לאתר האינטרנט <ExternalLink size={16}/></a>
+                  <a href="https://mgilady.wixsite.com/meirgilady" target="_blank" className="text-indigo-500 hover:text-white underline text-lg mt-4 flex items-center gap-1 font-bold">לאתר האינטרנט</a>
                 </div>
              </div>
              {[1, 2, 3].map(i => (
