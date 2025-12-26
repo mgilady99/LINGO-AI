@@ -8,15 +8,17 @@ export async function onRequestPost(context) {
       return new Response(JSON.stringify({ error: "חסר אימייל או קוד" }), { status: 400 });
     }
 
-    // ניקוי: הכל לאותיות קטנות כדי להתאים למסד הנתונים
+    // --- התיקון הגדול: מחיקת כל הרווחים והמרה לאותיות קטנות ---
     email = email.trim().toLowerCase();
-    promoCode = promoCode.trim().toLowerCase();
+    // הופך "gift 10002" ל-"gift10002"
+    promoCode = promoCode.replace(/\s/g, '').toLowerCase(); 
+    // -----------------------------------------------------------
 
     // 1. בדיקת הקוד
     const codeRecord = await env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(promoCode).first();
 
     if (!codeRecord) {
-      return new Response(JSON.stringify({ error: "קוד לא קיים" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "קוד לא קיים (בדוק שאייתת נכון)" }), { status: 400 });
     }
 
     // בדיקה אם נוצל (למעט קוד המאסטר)
