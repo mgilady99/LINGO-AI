@@ -1,34 +1,46 @@
-// src/services/audioService.ts
-export const decode = (base64: string): ArrayBuffer => {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-};
+// src/types.ts
+export interface Language {
+  code: string;
+  name: string;
+  flag: string;
+}
 
-export const decodeAudioData = (arrayBuffer: ArrayBuffer, audioCtx: AudioContext, sampleRate: number = 24000): AudioBuffer => {
-  const dataView = new DataView(arrayBuffer);
-  const length = arrayBuffer.byteLength / 2;
-  const audioBuffer = audioCtx.createBuffer(1, length, sampleRate);
-  const channelData = audioBuffer.getChannelData(0);
-  for (let i = 0; i < length; i++) {
-    channelData[i] = dataView.getInt16(i * 2, true) / 32768.0;
-  }
-  return audioBuffer;
-};
+export interface PracticeScenario {
+  id: string;
+  icon: string;
+  title: string;
+  systemInstruction: string;
+}
 
-export const createPcmBlob = (float32Array: Float32Array): string => {
-  const int16Array = new Int16Array(float32Array.length);
-  for (let i = 0; i < float32Array.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32Array[i]));
-    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+export enum ConnectionStatus {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+}
+
+export const SUPPORTED_LANGUAGES: Language[] = [
+  { code: 'he-IL', name: 'Hebrew', flag: '🇮🇱' },
+  { code: 'en-US', name: 'English', flag: '🇺🇸' },
+  { code: 'es-ES', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'fr-FR', name: 'French', flag: '🇫🇷' },
+  { code: 'ar-SA', name: 'Arabic', flag: '🇸🇦' }
+];
+
+export const SCENARIOS: PracticeScenario[] = [
+  { 
+    id: 'live', icon: '🎙️', title: 'mode_live', 
+    systemInstruction: 'Translate exactly between SOURCE_LANG and TARGET_LANG. Output ONLY translation.' 
+  },
+  { 
+    id: 'simul', icon: '🎧', title: 'mode_simul', 
+    systemInstruction: 'Simultaneous interpreter. Translate SOURCE_LANG to TARGET_LANG fast.' 
+  },
+  { 
+    id: 'chat', icon: '💬', title: 'mode_chat', 
+    systemInstruction: 'Conversation partner in TARGET_LANG. Natural chat only.' 
+  },
+  { 
+    id: 'learn', icon: '🎓', title: 'mode_learn', 
+    systemInstruction: 'Tutor. Correct mistakes in SOURCE_LANG, then repeat in TARGET_LANG.' 
   }
-  const bytes = new Uint8Array(int16Array.buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-};
+];
