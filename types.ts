@@ -1,54 +1,34 @@
-// src/types.ts
-export interface Language {
-  code: string;
-  name: string;
-  flag: string;
-}
-
-export interface PracticeScenario {
-  id: string;
-  icon: string;
-  title: string;
-  systemInstruction: string;
-}
-
-export enum ConnectionStatus {
-  DISCONNECTED = 'disconnected',
-  CONNECTING = 'connecting',
-  CONNECTED = 'connected',
-}
-
-export const SUPPORTED_LANGUAGES: Language[] = [
-  { code: 'he-IL', name: 'Hebrew', flag: '🇮🇱' },
-  { code: 'en-US', name: 'English', flag: '🇺🇸' },
-  { code: 'es-ES', name: 'Spanish', flag: '🇪🇸' },
-  { code: 'fr-FR', name: 'French', flag: '🇫🇷' },
-  { code: 'ar-SA', name: 'Arabic', flag: '🇸🇦' }
-];
-
-export const SCENARIOS: PracticeScenario[] = [
-  { 
-    id: 'live', 
-    icon: '🎙️', 
-    title: 'mode_live', 
-    systemInstruction: 'Act as a professional bi-directional interpreter. Translate exactly between SOURCE_LANG and TARGET_LANG. Output ONLY the translation.' 
-  },
-  { 
-    id: 'simul', 
-    icon: '🎧', 
-    title: 'mode_simul', 
-    systemInstruction: 'Act as a simultaneous interpreter. Translate from SOURCE_LANG to TARGET_LANG as fast as possible. Prioritize flow and speed.' 
-  },
-  { 
-    id: 'chat', 
-    icon: '💬', 
-    title: 'mode_chat', 
-    systemInstruction: 'Act as a friendly conversation partner in TARGET_LANG. Speak only the target language. Engage in natural dialogue, no translation.' 
-  },
-  { 
-    id: 'learn', 
-    icon: '🎓', 
-    title: 'mode_learn', 
-    systemInstruction: 'Act as a language tutor for TARGET_LANG. If the user makes a mistake, correct them in SOURCE_LANG, then repeat the correction in TARGET_LANG.' 
+// src/services/audioService.ts
+export const decode = (base64: string): ArrayBuffer => {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
   }
-];
+  return bytes.buffer;
+};
+
+export const decodeAudioData = (arrayBuffer: ArrayBuffer, audioCtx: AudioContext, sampleRate: number = 24000): AudioBuffer => {
+  const dataView = new DataView(arrayBuffer);
+  const length = arrayBuffer.byteLength / 2;
+  const audioBuffer = audioCtx.createBuffer(1, length, sampleRate);
+  const channelData = audioBuffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    channelData[i] = dataView.getInt16(i * 2, true) / 32768.0;
+  }
+  return audioBuffer;
+};
+
+export const createPcmBlob = (float32Array: Float32Array): string => {
+  const int16Array = new Int16Array(float32Array.length);
+  for (let i = 0; i < float32Array.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32Array[i]));
+    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  const bytes = new Uint8Array(int16Array.buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
