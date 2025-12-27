@@ -1,4 +1,5 @@
 // src/services/audioService.ts
+
 export const decode = (base64: string): ArrayBuffer => {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -18,7 +19,6 @@ export const decodeAudioData = (
   const audioBuffer = audioCtx.createBuffer(1, length, sampleRate);
   const channelData = audioBuffer.getChannelData(0);
   for (let i = 0; i < length; i++) {
-    // Gemini 2.0 Live תמיד שולח Int16 Little Endian
     channelData[i] = dataView.getInt16(i * 2, true) / 32768.0;
   }
   return audioBuffer;
