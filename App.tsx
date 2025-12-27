@@ -1,3 +1,4 @@
+הוספת הייצוא החסר שגרם לשגיאת הבנייה
 // src/App.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
@@ -31,7 +32,6 @@ const App: React.FC = () => {
   const t = (key: string) => translations[nativeLang.code]?.[key] || translations['en-US']?.[key] || key;
   const dir = (nativeLang.code === 'he-IL' || nativeLang.code === 'ar-SA') ? 'rtl' : 'ltr';
 
-  // פונקציית התנתקות - מוגדרת כאן למניעת ReferenceError "handleLogout is not defined"
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
     if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
@@ -57,28 +57,21 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('lingolive_user');
-    if (saved) {
-      try { handleLoginSuccess(JSON.parse(saved), false); } catch (e) { localStorage.removeItem('lingolive_user'); }
-    }
+    if (saved) { try { handleLoginSuccess(JSON.parse(saved), false); } catch (e) { localStorage.removeItem('lingolive_user'); } }
     fetch('/api/admin/settings').then(res => res.json()).then(data => { if(data.ads) setAds(data.ads); }).catch(() => {});
   }, [handleLoginSuccess]);
 
   const startConversation = async () => {
-    // בדיקת API KEY קריטית
     const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey || apiKey === "undefined") {
-      console.error("Critical: API Key is missing.");
-      alert("שגיאה: מפתח ה-API לא מוגדר במערכת. אנא הגדר VITE_API_KEY ב-Cloudflare.");
+      alert("Critical Error: VITE_API_KEY is missing. Check Cloudflare Settings.");
       return;
     }
     
     try {
       setStatus(ConnectionStatus.CONNECTING);
-      
-      // אתחול אודיו מותאם מובייל
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext();
       if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext();
-
       await inputAudioContextRef.current.resume();
       await outputAudioContextRef.current.resume();
 
@@ -90,7 +83,6 @@ const App: React.FC = () => {
         .replace(/SOURCE_LANG/g, nativeLang.name)
         .replace(/TARGET_LANG/g, targetLang.name);
 
-      // חיבור Live יציב
       const session = await ai.live.connect({
         model: "gemini-2.0-flash-exp",
         config: { 
@@ -102,13 +94,12 @@ const App: React.FC = () => {
       activeSessionRef.current = session;
 
       const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
-      // באפר גדול יותר למובייל למניעת קיטועים
       const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
       
       scriptProcessor.onaudioprocess = (e) => {
         if (activeSessionRef.current) {
           const pcmData = createPcmBlob(e.inputBuffer.getChannelData(0));
-          // --- תיקון שגיאת ה-Blob: המבנה המדויק שגוגל דורשת כעת ---
+          // התיקון המדויק לשגיאת ה-Blob: שליחת מערך אובייקטים
           activeSessionRef.current.sendRealtimeInput([{
             data: pcmData,
             mimeType: `audio/pcm;rate=${inputAudioContextRef.current?.sampleRate || 16000}`
@@ -120,7 +111,6 @@ const App: React.FC = () => {
 
       (async () => {
         try {
-          if (!session) return;
           for await (const msg of session.listen()) {
             const audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audio) {
@@ -140,29 +130,23 @@ const App: React.FC = () => {
               sourcesRef.current.add(audioSource);
             }
           }
-        } catch(e) { console.error("Session ended:", e); stopConversation(); }
+        } catch(e) { stopConversation(); }
       })();
       setStatus(ConnectionStatus.CONNECTED);
-    } catch (e) { 
-        setStatus(ConnectionStatus.DISCONNECTED); 
-        console.error("Connection Failed:", e);
-        alert("החיבור נכשל. ודא שהמיקרופון מחובר ושיש לך הרשאות.");
-    }
+    } catch (e) { setStatus(ConnectionStatus.DISCONNECTED); alert("Connection failed. Check microphone."); }
   };
 
   if (view === 'LOGIN') return <Login onLoginSuccess={handleLoginSuccess} nativeLang={nativeLang} setNativeLang={setNativeLang} t={t} />;
-  
   if (view === 'PRICING') return (
     <div className={`relative h-screen ${dir}`} dir={dir}>
       <Pricing onPlanSelect={() => setView('APP')} userEmail={userData?.email} t={t} />
-      <button onClick={handleLogout} className={`fixed top-4 ${dir === 'rtl' ? 'left-4' : 'right-4'} bg-slate-800 text-white px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2`}><LogOut size={14}/> {t('logout')}</button>
+      <button onClick={handleLogout} className="fixed top-4 left-4 bg-slate-800 text-white px-4 py-2 rounded-full font-bold text-xs shadow-lg">Logout</button>
     </div>
   );
-
   if (view === 'ADMIN') return <Admin onBack={() => window.location.reload()} />;
 
   return (
-    <div className={`h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden font-['Inter'] ${dir}`} dir={dir}>
+    <div className={`h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden ${dir}`} dir={dir}>
       <header className="p-4 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg"><Headphones size={18} /></div>
@@ -170,7 +154,7 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           {userData?.role === 'ADMIN' && (
-            <button onClick={() => setView('ADMIN')} className="bg-white text-indigo-900 px-4 py-2 rounded-full font-black text-xs flex items-center gap-2 hover:bg-slate-200 shadow-lg"><Settings size={14} /> Admin</button>
+            <button onClick={() => setView('ADMIN')} className="bg-white text-indigo-900 px-4 py-2 rounded-full font-black text-xs shadow-lg">Admin Panel</button>
           )}
           <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-white underline">{t('logout')}</button>
         </div>
@@ -196,7 +180,7 @@ const App: React.FC = () => {
                 <button 
                   key={s.id} 
                   onClick={() => setSelectedScenario(s)} 
-                  className={`py-6 rounded-2xl flex flex-col items-center gap-3 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.05]' : 'bg-slate-800/40 text-slate-500 hover:bg-slate-800/70'}`}
+                  className={`py-6 rounded-2xl flex flex-col items-center gap-3 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.05]' : 'bg-slate-800/40 text-slate-500'}`}
                 >
                   <span className="text-3xl">{s.icon}</span>
                   <span className="text-lg font-black uppercase text-center px-1 leading-tight">{t(s.title)}</span>
@@ -207,15 +191,7 @@ const App: React.FC = () => {
 
           <div className="flex flex-col items-center py-6 flex-1 justify-center relative">
             <Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} />
-            
-            <button 
-              onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} 
-              className={`mt-8 px-12 py-6 rounded-full font-black text-2xl shadow-2xl flex items-center gap-3 transition-all active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}
-            >
-                <Mic size={32} /> 
-                {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
-            </button>
-            
+            <button onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} className={`mt-8 px-12 py-6 rounded-full font-black text-2xl shadow-2xl flex items-center gap-3 active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500' : 'bg-indigo-600'}`}><Mic size={32} /> {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}</button>
             {(isSpeaking || status === ConnectionStatus.CONNECTED) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
         </div>
@@ -234,4 +210,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; // הוספת הייצוא החסר שגרם לשגיאת הבנייה
+export default App; // 
