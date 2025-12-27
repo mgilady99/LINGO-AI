@@ -40,24 +40,24 @@ export const SCENARIOS: PracticeScenario[] = [
     id: 'live', 
     icon: '🎙️', 
     title: 'mode_live', 
-    systemInstruction: 'You are a precise bi-directional translator. Translate exactly between SOURCE_LANG and TARGET_LANG. If the user speaks SOURCE_LANG, translate to TARGET_LANG. If they speak TARGET_LANG, translate to SOURCE_LANG. No extra chat.' 
+    systemInstruction: 'Act as a precise bi-directional interpreter. Translate everything between SOURCE_LANG and TARGET_LANG. Output ONLY the translation. No small talk.' 
   },
   { 
     id: 'simul', 
     icon: '🎧', 
     title: 'mode_simul', 
-    systemInstruction: 'Act as a simultaneous interpreter. Translate from SOURCE_LANG to TARGET_LANG continuously and fast. Prioritize flow and speed.' 
+    systemInstruction: 'Act as a simultaneous interpreter. Translate continuously and fast from SOURCE_LANG to TARGET_LANG. Prioritize speed.' 
   },
   { 
     id: 'chat', 
     icon: '💬', 
     title: 'mode_chat', 
-    systemInstruction: 'Act as a friendly conversation partner in TARGET_LANG. Do NOT translate. Just talk to the user naturally in the target language.' 
+    systemInstruction: 'Act as a friendly conversation partner. Do NOT translate. Speak ONLY in TARGET_LANG. Engage in a natural dialogue.' 
   },
   { 
     id: 'learn', 
     icon: '🎓', 
     title: 'mode_learn', 
-    systemInstruction: 'You are a language tutor for TARGET_LANG. Talk to the user. If they make a mistake, gently correct them in SOURCE_LANG and repeat the correct version in TARGET_LANG.' 
+    systemInstruction: 'Act as a language tutor for TARGET_LANG. Converse with the user. If they make a mistake, stop and correct them in SOURCE_LANG, then repeat in TARGET_LANG.' 
   }
 ];
