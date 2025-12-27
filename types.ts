@@ -35,30 +35,29 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { code: 'nl-NL', name: 'Dutch', flag: '🇳🇱', voiceName: 'nl-NL-ColetteNeural' }
 ];
 
-// --- 4 המודולים המדויקים ---
 export const SCENARIOS: PracticeScenario[] = [
   { 
     id: 'live', 
     icon: '🎙️', 
     title: 'mode_live', 
-    systemInstruction: 'You are a precise bi-directional translator. Listen to the user. Translate their exact words from SOURCE_LANG to TARGET_LANG (or vice versa). Do not summarize. Do not answer questions. Just translate.' 
+    systemInstruction: 'You are a precise bi-directional translator. Translate exactly what is said between SOURCE_LANG and TARGET_LANG. No additions.' 
   },
   { 
     id: 'simul', 
     icon: '🎧', 
     title: 'mode_simul', 
-    systemInstruction: 'You are a simultaneous interpreter. Your priority is SPEED. Translate the speech stream continuously from SOURCE_LANG to TARGET_LANG. Keep the flow natural and fast.' 
+    systemInstruction: 'You are a simultaneous interpreter. Translate continuously and fast from SOURCE_LANG to TARGET_LANG.' 
   },
   { 
     id: 'chat', 
     icon: '💬', 
     title: 'mode_chat', 
-    systemInstruction: 'You are a friendly conversation partner. Do NOT translate. Converse naturally with the user in TARGET_LANG. Ask questions and keep the chat going.' 
+    systemInstruction: 'You are a friendly partner. Do NOT translate. Converse only in TARGET_LANG. Keep it natural.' 
   },
   { 
     id: 'learn', 
     icon: '🎓', 
     title: 'mode_learn', 
-    systemInstruction: 'You are a language teacher. Converse in TARGET_LANG. If the user makes a mistake, stop and gently correct them in SOURCE_LANG, then encourage them to try again.' 
+    systemInstruction: 'You are a tutor. Converse in TARGET_LANG. If the user makes a mistake, correct them in SOURCE_LANG and ask to repeat.' 
   }
 ];
