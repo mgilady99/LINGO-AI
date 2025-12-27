@@ -1,7 +1,8 @@
+
 // src/App.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
-import { Mic, Headphones, ExternalLink, ShieldCheck, Settings, LogOut, ArrowLeftRight } from 'lucide-react';
+import { Mic, Headphones, ExternalLink, Settings, LogOut, ArrowLeftRight } from 'lucide-react';
 import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeScenario } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
@@ -33,7 +34,7 @@ const App: React.FC = () => {
 
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
-    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
+    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(track => track.stop()); micStreamRef.current = null; }
     sourcesRef.current.clear();
     setStatus(ConnectionStatus.DISCONNECTED);
     setIsSpeaking(false);
@@ -62,10 +63,7 @@ const App: React.FC = () => {
 
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
-    if (!apiKey || apiKey === "undefined") {
-        alert("Critical: API Key is missing. Check Cloudflare environment variables.");
-        return;
-    }
+    if (!apiKey || apiKey === "undefined") return alert("API Key missing. Check Cloudflare.");
     
     try {
       stopConversation();
@@ -100,7 +98,7 @@ const App: React.FC = () => {
       scriptProcessor.onaudioprocess = (e) => {
         if (activeSessionRef.current) {
           const pcmData = createPcmBlob(e.inputBuffer.getChannelData(0));
-          // התיקון הקריטי לשגיאת ה-Blob
+          // מבנה השליחה המדויק לפתרון שגיאת ה-Blob
           activeSessionRef.current.send({
             realtimeInput: {
               mediaChunks: [{
@@ -140,7 +138,7 @@ const App: React.FC = () => {
       setStatus(ConnectionStatus.CONNECTED);
     } catch (e) { 
         setStatus(ConnectionStatus.DISCONNECTED); 
-        alert("Mic/Connection failed. Grant permissions and check API Key."); 
+        alert("Connection failed. Check permissions and API Key."); 
     }
   };
 
@@ -161,7 +159,7 @@ const App: React.FC = () => {
           <span className="font-black text-xs uppercase tracking-tighter">LingoLive Pro</span>
         </div>
         <div className="flex items-center gap-2">
-          {userData?.role === 'ADMIN' && <button onClick={() => setView('ADMIN')} className="text-[10px] bg-white text-indigo-900 px-2 py-1 rounded-full font-bold">Admin</button>}
+          {userData?.role === 'ADMIN' && <button onClick={() => setView('ADMIN')} className="text-[10px] bg-white text-indigo-900 px-2 py-1 rounded-full font-bold shadow-lg">Admin</button>}
           <button onClick={handleLogout} className="text-[10px] text-slate-500 hover:text-white underline">{t('logout')}</button>
         </div>
       </header>
@@ -171,9 +169,9 @@ const App: React.FC = () => {
           <div className="bg-slate-900/90 rounded-[1.5rem] border border-white/10 p-3 flex flex-col gap-2 shadow-2xl">
             <div className="bg-slate-800/40 p-2 rounded-xl border border-white/5">
               <div className="flex items-center gap-2">
-                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
-                <ArrowLeftRight size={12} className="text-indigo-500" />
-                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-3 text-xs font-bold w-full text-center transition-all focus:border-indigo-500">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+                <ArrowLeftRight size={14} className="text-indigo-500 shrink-0" />
+                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-3 text-xs font-bold w-full text-center transition-all focus:border-indigo-500">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
               </div>
             </div>
             
