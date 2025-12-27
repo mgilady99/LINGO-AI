@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { Mic, Headphones, ExternalLink, ShieldCheck, Settings, LogOut, ArrowLeftRight } from 'lucide-react';
@@ -64,10 +65,10 @@ const App: React.FC = () => {
     if (!apiKey || apiKey === "undefined") return alert("API Key missing in Cloudflare.");
     
     try {
-      stopConversation(); // שחרור משאבים קודמים
+      stopConversation(); // שחרור מיקרופון קודם
       setStatus(ConnectionStatus.CONNECTING);
       
-      // כפיית בקשת אישור מיקרופון מהדפדפן
+      // בקשת אישור מיקרופון (מכריח את הדפדפן לבדוק שוב)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
 
@@ -97,7 +98,7 @@ const App: React.FC = () => {
       scriptProcessor.onaudioprocess = (e) => {
         if (activeSessionRef.current) {
           const pcmData = createPcmBlob(e.inputBuffer.getChannelData(0));
-          // התיקון הקריטי לשגיאת ה-Blob בגרסת דצמבר 2025
+          // התיקון למניעת שגיאת ה-Blob
           activeSessionRef.current.send({
             realtimeInput: {
               mediaChunks: [{
@@ -152,35 +153,34 @@ const App: React.FC = () => {
 
   return (
     <div className={`h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden font-['Inter'] ${dir}`} dir={dir}>
-      <header className="p-2 flex items-center justify-between bg-slate-900/60 border-b border-white/5">
+      <header className="p-2 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center shadow-lg"><Headphones size={14} /></div>
           <span className="font-black text-xs uppercase tracking-tighter">LingoLive Pro</span>
         </div>
         <div className="flex items-center gap-2">
-          {userData?.role === 'ADMIN' && <button onClick={() => setView('ADMIN')} className="text-[10px] bg-white text-indigo-900 px-2 py-1 rounded-full font-bold">Admin</button>}
-          <button onClick={handleLogout} className="text-[10px] text-slate-500 hover:text-white underline">{t('logout')}</button>
+          {userData?.role === 'ADMIN' && <button onClick={() => setView('ADMIN')} className="text-[10px] bg-white text-indigo-900 px-2 py-1 rounded-full font-bold shadow-lg">Admin</button>}
+          <button onClick={handleLogout} className="text-[10px] text-slate-500 hover:text-white underline decoration-slate-700">{t('logout')}</button>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
         <div className="w-full md:w-[400px] flex flex-col p-2 gap-2 bg-slate-900/30 border-r border-white/5 shadow-2xl">
-          <div className="bg-slate-900/90 rounded-[1.5rem] border border-white/10 p-3 flex flex-col gap-2">
+          <div className="bg-slate-900/90 rounded-[1.5rem] border border-white/10 p-3 flex flex-col gap-2 shadow-2xl">
             <div className="bg-slate-800/40 p-2 rounded-xl border border-white/5">
               <div className="flex items-center gap-2">
-                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center transition-colors focus:border-indigo-500">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
                 <ArrowLeftRight size={12} className="text-indigo-500 shrink-0" />
-                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center transition-colors focus:border-indigo-500">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
               </div>
             </div>
             
-            {/* ארבעת המודולים מוקטנים ב-50% ומשוכים למעלה */}
             <div className="grid grid-cols-2 gap-2">
               {SCENARIOS.map(s => (
                 <button 
                   key={s.id} 
                   onClick={() => setSelectedScenario(s)} 
-                  className={`py-2 rounded-xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl' : 'bg-slate-800/40 text-slate-500'}`}
+                  className={`py-4 rounded-xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-slate-800/40 text-slate-500 hover:bg-slate-800/70'}`}
                 >
                   <span className="text-xl">{s.icon}</span>
                   <span className="text-[10px] font-black uppercase text-center leading-tight">{t(s.title)}</span>
@@ -190,22 +190,25 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-col items-center py-2 flex-1 justify-center relative">
-            <div className="scale-75 md:scale-100">
+            <div className="scale-75 md:scale-90">
               <Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} />
             </div>
+            
             <button 
               onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} 
-              className={`mt-4 px-10 py-4 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500' : 'bg-indigo-600 shadow-indigo-500/20'}`}
+              className={`mt-4 px-10 py-4 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 active:scale-95 transition-all ${status === ConnectionStatus.CONNECTED ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'}`}
             >
-                <Mic size={24} /> {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
+                <Mic size={24} /> 
+                {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
             </button>
+            
             {(isSpeaking || status === ConnectionStatus.CONNECTED) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
         </div>
 
         <div className="hidden md:flex flex-1 bg-slate-950 p-4 flex-col gap-4 overflow-y-auto items-center">
            {ads.filter(ad => ad.is_active).map(ad => (
-               <div key={ad.slot_id} className="w-full max-w-sm bg-slate-900 rounded-2xl border border-white/5 p-4 text-center shadow-lg">
+               <div key={ad.slot_id} className="w-full max-w-sm bg-slate-900 rounded-2xl border border-white/5 p-4 text-center shadow-lg hover:border-indigo-500/30 transition-colors">
                  {ad.image_url && <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-xl mb-2" />}
                  <h4 className="text-sm font-bold text-white mb-2">{ad.title}</h4>
                  <a href={ad.target_url} target="_blank" className="mt-2 bg-indigo-600/20 text-indigo-400 px-4 py-1 rounded-lg font-bold text-xs inline-flex items-center gap-1 transition-all hover:bg-indigo-600 hover:text-white">Visit <ExternalLink size={12} /></a>
