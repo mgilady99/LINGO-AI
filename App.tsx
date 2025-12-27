@@ -22,13 +22,7 @@ const App: React.FC = () => {
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef(0);
 
-  // פונקציית תרגום מוגנת
-  const t = (key: string) => {
-    try {
-      return translations[nativeLang.code]?.[key] || translations['en-US']?.[key] || key;
-    } catch { return key; }
-  };
-
+  const t = (key: string) => translations[nativeLang.code]?.[key] || translations['en-US']?.[key] || key;
   const dir = (nativeLang.code === 'he-IL' || nativeLang.code === 'ar-SA') ? 'rtl' : 'ltr';
 
   const stopConversation = useCallback(() => {
@@ -68,13 +62,10 @@ const App: React.FC = () => {
       const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
       
       scriptProcessor.onaudioprocess = (e) => {
-        // תיקון שגיאת d.current.send - וידוא קיום המתודה
         if (activeSessionRef.current && typeof activeSessionRef.current.send === 'function') {
-          try {
-            activeSessionRef.current.send({
-              realtimeInput: { mediaChunks: [{ data: createPcmBlob(e.inputBuffer.getChannelData(0)), mimeType: `audio/pcm;rate=16000` }] }
-            });
-          } catch (err) { console.error("Send failed:", err); }
+          activeSessionRef.current.send({
+            realtimeInput: { mediaChunks: [{ data: createPcmBlob(e.inputBuffer.getChannelData(0)), mimeType: `audio/pcm;rate=16000` }] }
+          });
         }
       };
       source.connect(scriptProcessor);
@@ -82,7 +73,7 @@ const App: React.FC = () => {
 
       (async () => {
         try {
-          if (!session || !session.listen) return;
+          if (!session.listen) return;
           for await (const msg of session.listen()) {
             const audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audio) {
@@ -113,7 +104,7 @@ const App: React.FC = () => {
           <div className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center shadow-lg"><Headphones size={12} /></div>
           <span className="font-black text-xs uppercase tracking-tighter">LingoLive Pro</span>
         </div>
-        <button onClick={() => setView('ADMIN')} className="text-[10px] bg-white text-indigo-900 px-2 py-0.5 rounded-full font-bold">Admin</button>
+        <button onClick={() => setView('ADMIN')} className="text-[10px] bg-white text-indigo-900 px-3 py-0.5 rounded-full font-bold">Admin</button>
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -125,10 +116,10 @@ const App: React.FC = () => {
                 <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-2 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
             </div>
             
-            {/* כיווץ נוסף של כפתורי המודולים - py-1.5 */}
+            {/* כפתורי מודולים - כיווץ נוסף ב-30% py-1.5 */}
             <div className="grid grid-cols-2 gap-1.5">
               {SCENARIOS.map(s => (
-                <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-1.5 rounded-xl flex flex-col items-center gap-0.5 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg scale-[1.02]' : 'bg-slate-800/40 text-slate-500'}`}>
+                <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-1.5 rounded-xl flex flex-col items-center gap-0.5 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-500'}`}>
                   <span className="text-lg">{s.icon}</span>
                   <span className="text-[8px] font-black uppercase tracking-tight leading-none">{t(s.title)}</span>
                 </button>
