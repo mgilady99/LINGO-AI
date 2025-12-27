@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { Mic, Headphones, ExternalLink, ShieldCheck, Settings, LogOut, ArrowLeftRight } from 'lucide-react';
@@ -62,16 +61,15 @@ const App: React.FC = () => {
 
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
-    if (!apiKey || apiKey === "undefined") return alert("API Key missing.");
+    if (!apiKey || apiKey === "undefined") return alert("API Key missing in Cloudflare.");
     
     try {
+      stopConversation(); // ניקוי חיבורים ישנים למניעת "מיקרופון בשימוש"
       setStatus(ConnectionStatus.CONNECTING);
       
-      // אתחול מיקרופון
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
 
-      // אתחול אודיו
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext();
       if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext();
       await inputAudioContextRef.current.resume();
@@ -98,12 +96,15 @@ const App: React.FC = () => {
       scriptProcessor.onaudioprocess = (e) => {
         if (activeSessionRef.current) {
           const pcmData = createPcmBlob(e.inputBuffer.getChannelData(0));
-          activeSessionRef.current.sendRealtimeInput([{
-            media: {
-              data: pcmData,
-              mimeType: `audio/pcm;rate=${inputAudioContextRef.current?.sampleRate || 16000}`
+          // מבנה שליחה מדויק למניעת שגיאת Blob
+          activeSessionRef.current.send({
+            realtimeInput: {
+              mediaChunks: [{
+                data: pcmData,
+                mimeType: `audio/pcm;rate=${inputAudioContextRef.current?.sampleRate || 16000}`
+              }]
             }
-          }]);
+          });
         }
       };
       source.connect(scriptProcessor);
@@ -134,9 +135,8 @@ const App: React.FC = () => {
       })();
       setStatus(ConnectionStatus.CONNECTED);
     } catch (e) { 
-      setStatus(ConnectionStatus.DISCONNECTED); 
-      console.error(e);
-      alert("Connection failed. Check microphone permissions.");
+        setStatus(ConnectionStatus.DISCONNECTED); 
+        alert("Connection failed. Check permissions or API Key."); 
     }
   };
 
@@ -144,7 +144,7 @@ const App: React.FC = () => {
   if (view === 'PRICING') return (
     <div className={`relative h-screen ${dir}`} dir={dir}>
       <Pricing onPlanSelect={() => setView('APP')} userEmail={userData?.email} t={t} />
-      <button onClick={handleLogout} className="fixed top-4 left-4 bg-slate-800 text-white px-4 py-2 rounded-full font-bold text-xs">Logout</button>
+      <button onClick={handleLogout} className="fixed top-4 left-4 bg-slate-800 text-white px-4 py-2 rounded-full font-bold text-xs shadow-lg">Logout</button>
     </div>
   );
   if (view === 'ADMIN') return <Admin onBack={() => window.location.reload()} />;
@@ -173,7 +173,7 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            {/* כפתורי מודולים מכווצים משמעותית */}
+            {/* כפתורי מודולים מוקטנים ב-50% ומשוכים למעלה */}
             <div className="grid grid-cols-2 gap-2">
               {SCENARIOS.map(s => (
                 <button 
@@ -182,36 +182,31 @@ const App: React.FC = () => {
                   className={`py-2 rounded-xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-500'}`}
                 >
                   <span className="text-xl">{s.icon}</span>
-                  <span className="text-[10px] font-black uppercase text-center">{t(s.title)}</span>
+                  <span className="text-[10px] font-black uppercase text-center leading-tight">{t(s.title)}</span>
                 </button>
               ))}
             </div>
           </div>
 
           <div className="flex flex-col items-center py-2 flex-1 justify-center relative">
-            {/* הקטנת האווטאר לטובת מקום */}
             <div className="scale-75 md:scale-100">
               <Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} />
             </div>
-            
             <button 
               onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} 
               className={`mt-4 px-10 py-4 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500' : 'bg-indigo-600'}`}
             >
-                <Mic size={24} /> 
-                {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
+                <Mic size={24} /> {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
             </button>
-            
             {(isSpeaking || status === ConnectionStatus.CONNECTED) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
         </div>
-
         <div className="hidden md:flex flex-1 bg-slate-950 p-4 flex-col gap-4 overflow-y-auto">
            {ads.filter(ad => ad.is_active).map(ad => (
-               <div key={ad.slot_id} className="w-full max-w-sm bg-slate-900 rounded-2xl border border-white/5 p-4 text-center">
+               <div key={ad.slot_id} className="w-full max-w-sm bg-slate-900 rounded-2xl border border-white/5 p-4 text-center shadow-lg">
                  {ad.image_url && <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-xl mb-2" />}
                  <h4 className="text-sm font-bold text-white mb-2">{ad.title}</h4>
-                 <a href={ad.target_url} target="_blank" className="mt-2 bg-indigo-600/20 text-indigo-400 px-4 py-1 rounded-lg font-bold text-xs inline-flex items-center gap-1">Link <ExternalLink size={12} /></a>
+                 <a href={ad.target_url} target="_blank" className="mt-2 bg-indigo-600/20 text-indigo-400 px-4 py-1 rounded-lg font-bold text-xs inline-flex items-center gap-1">Visit <ExternalLink size={12} /></a>
                </div>
            ))}
         </div>
@@ -220,4 +215,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default App; // הוספת הייצוא החסר למניעת שגיאת בנייה
