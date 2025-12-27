@@ -1,10 +1,8 @@
 // src/types.ts
-
 export interface Language {
   code: string;
   name: string;
   flag: string;
-  voiceName: string;
 }
 
 export interface PracticeScenario {
@@ -21,11 +19,11 @@ export enum ConnectionStatus {
 }
 
 export const SUPPORTED_LANGUAGES: Language[] = [
-  { code: 'he-IL', name: 'Hebrew', flag: '🇮🇱', voiceName: 'he-IL-HilaNeural' },
-  { code: 'en-US', name: 'English', flag: '🇺🇸', voiceName: 'en-US-Journey-D' },
-  { code: 'es-ES', name: 'Spanish', flag: '🇪🇸', voiceName: 'es-ES-ElviraNeural' },
-  { code: 'fr-FR', name: 'French', flag: '🇫🇷', voiceName: 'fr-FR-DeniseNeural' },
-  { code: 'ar-SA', name: 'Arabic', flag: '🇸🇦', voiceName: 'ar-SA-ZariyahNeural' }
+  { code: 'he-IL', name: 'Hebrew', flag: '🇮🇱' },
+  { code: 'en-US', name: 'English', flag: '🇺🇸' },
+  { code: 'es-ES', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'fr-FR', name: 'French', flag: '🇫🇷' },
+  { code: 'ar-SA', name: 'Arabic', flag: '🇸🇦' }
 ];
 
 export const SCENARIOS: PracticeScenario[] = [
@@ -33,24 +31,24 @@ export const SCENARIOS: PracticeScenario[] = [
     id: 'live', 
     icon: '🎙️', 
     title: 'mode_live', 
-    systemInstruction: 'Act as a precise bi-directional interpreter. Translate everything between SOURCE_LANG and TARGET_LANG. Output ONLY the translation.' 
+    systemInstruction: 'Act as a professional bi-directional interpreter. Translate exactly between SOURCE_LANG and TARGET_LANG. Output ONLY the translation.' 
   },
   { 
     id: 'simul', 
     icon: '🎧', 
     title: 'mode_simul', 
-    systemInstruction: 'Simultaneous interpreter from SOURCE_LANG to TARGET_LANG. Translate fast and continuously.' 
+    systemInstruction: 'Act as a simultaneous interpreter. Translate from SOURCE_LANG to TARGET_LANG as fast as possible. Prioritize flow and speed.' 
   },
   { 
     id: 'chat', 
     icon: '💬', 
     title: 'mode_chat', 
-    systemInstruction: 'Conversation partner. Speak ONLY in TARGET_LANG. Natural dialogue, no translation.' 
+    systemInstruction: 'Act as a friendly conversation partner in TARGET_LANG. Speak only the target language. Engage in natural dialogue, no translation.' 
   },
   { 
     id: 'learn', 
     icon: '🎓', 
     title: 'mode_learn', 
-    systemInstruction: 'Language tutor for TARGET_LANG. Correct mistakes in SOURCE_LANG, then repeat in TARGET_LANG.' 
+    systemInstruction: 'Act as a language tutor for TARGET_LANG. If the user makes a mistake, correct them in SOURCE_LANG, then repeat the correction in TARGET_LANG.' 
   }
 ];
