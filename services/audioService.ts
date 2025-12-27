@@ -19,6 +19,7 @@ export const decodeAudioData = (arrayBuffer: ArrayBuffer, audioCtx: AudioContext
   return buffer;
 };
 
+// המרה ושינוי תדר ל-16kHz כפי שגוגל דורשת
 export const createPcmBlob = (float32Array: Float32Array, inputSampleRate: number): string => {
   const targetSampleRate = 16000;
   const ratio = inputSampleRate / targetSampleRate;
