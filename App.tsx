@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import { Mic, Headphones, ArrowLeftRight } from 'lucide-react';
@@ -22,7 +21,7 @@ const App: React.FC = () => {
   const nextStartTimeRef = useRef(0);
 
   const t = (key: string) => translations[nativeLang.code]?.[key] || translations['en-US']?.[key] || key;
-  const dir = (nativeLang.code === 'he-IL' || nativeLang.code === 'ar-SA') ? 'rtl' : 'ltr';
+  const dir = (nativeLang.code === 'he-IL' || nativeLang.code === 'ar-SA' || nativeLang.code === 'tr-TR') ? 'rtl' : 'ltr';
 
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
@@ -33,8 +32,8 @@ const App: React.FC = () => {
 
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
-    if (!apiKey || apiKey === "undefined") return alert("API Key missing. Check Cloudflare.");
-    
+    if (!apiKey || apiKey === "undefined") return alert("API Key missing. Check Cloudflare Settings.");
+
     try {
       stopConversation();
       setStatus(ConnectionStatus.CONNECTING);
@@ -45,7 +44,7 @@ const App: React.FC = () => {
       inputAudioContextRef.current = inCtx;
       outputAudioContextRef.current = new AudioContext();
 
-      const ai = new GoogleGenAI(apiKey);
+      const ai = new GoogleGenAI(apiKey); 
       const session = await ai.live.connect({
         model: "gemini-2.0-flash-exp",
         config: { 
@@ -61,20 +60,14 @@ const App: React.FC = () => {
       
       scriptProcessor.onaudioprocess = (e) => {
         if (activeSessionRef.current && activeSessionRef.current.send) {
-          // שימוש ב-Resampling ל-16kHz כפי שהוצע ע"י Grok
-          const pcmBase64 = createPcmBlob(e.inputBuffer.getChannelData(0), inCtx.sampleRate);
+          const pcmData = createPcmBlob(e.inputBuffer.getChannelData(0), inCtx.sampleRate);
           activeSessionRef.current.send({
-            realtimeInput: { 
-              mediaChunks: [{ 
-                data: pcmBase64, 
-                mimeType: `audio/pcm;rate=16000` 
-              }] 
-            }
+            realtimeInput: { mediaChunks: [{ data: pcmData, mimeType: `audio/pcm;rate=16000` }] }
           });
         }
       };
       source.connect(scriptProcessor);
-      scriptProcessor.connect(inCtx.destination);
+      scriptProcessor.connect(inputAudioContextRef.current!.destination);
 
       (async () => {
         try {
@@ -114,14 +107,14 @@ const App: React.FC = () => {
           <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-6 flex flex-col gap-4">
             <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5">
               <div className="flex items-center gap-3">
-                {/* שדות שפה גדולים - py-4 */}
+                {/* שחזור גודל מקורי py-4 */}
                 <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-xl px-4 py-4 text-sm font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
                 <ArrowLeftRight size={20} className="text-indigo-500 shrink-0" />
                 <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-xl px-4 py-4 text-sm font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
               </div>
             </div>
             
-            {/* מודולים גדולים - py-6 */}
+            {/* שחזור גודל מקורי py-6 */}
             <div className="grid grid-cols-2 gap-3">
               {SCENARIOS.map(s => (
                 <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-6 rounded-3xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-105' : 'bg-slate-800/40 text-slate-500'}`}>
