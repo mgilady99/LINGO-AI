@@ -32,7 +32,7 @@ const App: React.FC = () => {
 
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
-    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
+    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(track => track.stop()); micStreamRef.current = null; }
     sourcesRef.current.clear();
     setStatus(ConnectionStatus.DISCONNECTED);
     setIsSpeaking(false);
@@ -64,9 +64,10 @@ const App: React.FC = () => {
     if (!apiKey || apiKey === "undefined") return alert("API Key missing in Cloudflare.");
     
     try {
-      stopConversation(); // ניקוי חיבורים ישנים למניעת "מיקרופון בשימוש"
+      stopConversation(); // שחרור משאבים קודמים
       setStatus(ConnectionStatus.CONNECTING);
       
+      // כפיית בקשת אישור מיקרופון מהדפדפן
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
 
@@ -96,7 +97,7 @@ const App: React.FC = () => {
       scriptProcessor.onaudioprocess = (e) => {
         if (activeSessionRef.current) {
           const pcmData = createPcmBlob(e.inputBuffer.getChannelData(0));
-          // מבנה שליחה מדויק למניעת שגיאת Blob
+          // התיקון הקריטי לשגיאת ה-Blob בגרסת דצמבר 2025
           activeSessionRef.current.send({
             realtimeInput: {
               mediaChunks: [{
@@ -136,7 +137,7 @@ const App: React.FC = () => {
       setStatus(ConnectionStatus.CONNECTED);
     } catch (e) { 
         setStatus(ConnectionStatus.DISCONNECTED); 
-        alert("Connection failed. Check permissions or API Key."); 
+        alert("Connection failed. Please ensure microphone access is allowed in your browser settings."); 
     }
   };
 
@@ -163,23 +164,23 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="w-full md:w-[400px] flex flex-col p-2 gap-2 bg-slate-900/30 border-r border-white/5">
-          <div className="bg-slate-900/90 rounded-[1.5rem] border border-white/10 p-3 flex flex-col gap-2 shadow-2xl">
-            <div className="bg-slate-800/40 p-2 rounded-xl">
+        <div className="w-full md:w-[400px] flex flex-col p-2 gap-2 bg-slate-900/30 border-r border-white/5 shadow-2xl">
+          <div className="bg-slate-900/90 rounded-[1.5rem] border border-white/10 p-3 flex flex-col gap-2">
+            <div className="bg-slate-800/40 p-2 rounded-xl border border-white/5">
               <div className="flex items-center gap-2">
-                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
-                <ArrowLeftRight size={12} className="text-indigo-500" />
-                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+                <ArrowLeftRight size={12} className="text-indigo-500 shrink-0" />
+                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
               </div>
             </div>
             
-            {/* כפתורי מודולים מוקטנים ב-50% ומשוכים למעלה */}
+            {/* ארבעת המודולים מוקטנים ב-50% ומשוכים למעלה */}
             <div className="grid grid-cols-2 gap-2">
               {SCENARIOS.map(s => (
                 <button 
                   key={s.id} 
                   onClick={() => setSelectedScenario(s)} 
-                  className={`py-2 rounded-xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800/40 text-slate-500'}`}
+                  className={`py-2 rounded-xl flex flex-col items-center gap-1 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl' : 'bg-slate-800/40 text-slate-500'}`}
                 >
                   <span className="text-xl">{s.icon}</span>
                   <span className="text-[10px] font-black uppercase text-center leading-tight">{t(s.title)}</span>
@@ -194,19 +195,20 @@ const App: React.FC = () => {
             </div>
             <button 
               onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} 
-              className={`mt-4 px-10 py-4 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500' : 'bg-indigo-600'}`}
+              className={`mt-4 px-10 py-4 rounded-full font-black text-xl shadow-2xl flex items-center gap-3 active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500' : 'bg-indigo-600 shadow-indigo-500/20'}`}
             >
                 <Mic size={24} /> {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
             </button>
             {(isSpeaking || status === ConnectionStatus.CONNECTED) && <AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} />}
           </div>
         </div>
-        <div className="hidden md:flex flex-1 bg-slate-950 p-4 flex-col gap-4 overflow-y-auto">
+
+        <div className="hidden md:flex flex-1 bg-slate-950 p-4 flex-col gap-4 overflow-y-auto items-center">
            {ads.filter(ad => ad.is_active).map(ad => (
                <div key={ad.slot_id} className="w-full max-w-sm bg-slate-900 rounded-2xl border border-white/5 p-4 text-center shadow-lg">
                  {ad.image_url && <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-xl mb-2" />}
                  <h4 className="text-sm font-bold text-white mb-2">{ad.title}</h4>
-                 <a href={ad.target_url} target="_blank" className="mt-2 bg-indigo-600/20 text-indigo-400 px-4 py-1 rounded-lg font-bold text-xs inline-flex items-center gap-1">Visit <ExternalLink size={12} /></a>
+                 <a href={ad.target_url} target="_blank" className="mt-2 bg-indigo-600/20 text-indigo-400 px-4 py-1 rounded-lg font-bold text-xs inline-flex items-center gap-1 transition-all hover:bg-indigo-600 hover:text-white">Visit <ExternalLink size={12} /></a>
                </div>
            ))}
         </div>
@@ -215,4 +217,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; // הוספת הייצוא החסר למניעת שגיאת בנייה
+export default App; // מניעת שגיאת Build
