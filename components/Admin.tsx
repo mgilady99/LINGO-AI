@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Trash2, ArrowLeft } from 'lucide-react';
+import { Upload, ArrowLeft } from 'lucide-react';
 
 const Admin: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [ads, setAds] = useState<any[]>([]);
