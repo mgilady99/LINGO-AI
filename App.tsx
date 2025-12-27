@@ -1,3 +1,5 @@
+// src/App.tsx
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Mic, Headphones, ChevronRight, ExternalLink, ShieldCheck, Settings, KeyRound, LogOut, Globe, ArrowLeftRight } from 'lucide-react';
@@ -10,6 +12,7 @@ import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import { translations } from './translations';
 
+// --- רכיבי עזר ---
 const ForgotPasswordView: React.FC<{ onBack: () => void, t: any }> = ({ onBack, t }) => {
   const [email, setEmail] = useState('');
   const handleSubmit = async () => {
@@ -48,7 +51,7 @@ const ResetPasswordView: React.FC<{ token: string, onSuccess: () => void }> = ({
                 <button onClick={handleReset} className="w-full bg-green-600 py-3 rounded-xl font-bold">Update</button>
             </div>
         </div>
-    );
+  );
 };
 
 const App: React.FC = () => {
@@ -83,17 +86,13 @@ const App: React.FC = () => {
     if (params.get('view') === 'RESET' && token) {
         setResetToken(token); setView('RESET'); window.history.replaceState({}, document.title, "/"); return;
     }
-
     const savedUserStr = localStorage.getItem('lingolive_user');
     if (savedUserStr) {
       try {
         const localUser = JSON.parse(savedUserStr);
-        if (localUser && localUser.email) {
-            handleLoginSuccess(localUser, false);
-        }
+        if (localUser && localUser.email) handleLoginSuccess(localUser, false);
       } catch (e) { localStorage.removeItem('lingolive_user'); }
     }
-
     fetch('/api/admin/settings').then(res => res.json()).then(data => {
         if(data.ads) setAds(data.ads);
     }).catch(() => {});
@@ -102,10 +101,8 @@ const App: React.FC = () => {
   const handleLoginSuccess = (user: any, shouldSave = true) => {
     if (shouldSave) localStorage.setItem('lingolive_user', JSON.stringify(user));
     setUserData(user);
-
     if (user.role === 'ADMIN' || user.email === 'mgilady@gmail.com') { setView('APP'); return; }
-    if (['PRO', 'Pro', 'BASIC', 'ADVANCED'].includes(user.plan)) { setView('APP'); return; }
-    if (user.tokens_used > 0) { setView('APP'); return; }
+    if (['PRO', 'Pro', 'BASIC', 'ADVANCED'].includes(user.plan) || user.tokens_used > 0) { setView('APP'); return; }
     setView('PRICING');
   };
 
@@ -126,15 +123,12 @@ const App: React.FC = () => {
 
   const startConversation = async () => {
     const apiKey = import.meta.env.VITE_API_KEY;
-    if (!apiKey) { alert("חסר מפתח API"); return; }
+    if (!apiKey) { alert("Missing API Key"); return; }
     
     try {
       setStatus(ConnectionStatus.CONNECTING);
-
       if (!inputAudioContextRef.current) inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
       if (!outputAudioContextRef.current) outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
-
-      // חובה להפעיל את האודיו מיד
       await inputAudioContextRef.current.resume();
       await outputAudioContextRef.current.resume();
 
@@ -144,14 +138,14 @@ const App: React.FC = () => {
       
       const outputCtx = outputAudioContextRef.current;
       const outputNode = outputCtx.createGain(); 
-      outputNode.gain.value = 1.2; // עוצמה נוחה
+      outputNode.gain.value = 1.0;
       outputNode.connect(outputCtx.destination);
 
       const instructions = selectedScenario.systemInstruction
         .replace(/SOURCE_LANG/g, nativeLang.name)
         .replace(/TARGET_LANG/g, targetLang.name);
 
-      // יצירת החיבור והמתנה לו (await קריטי!)
+      // התחברות והמתנה לחיבור יציב
       const session = await ai.live.connect({ 
         model: 'gemini-2.0-flash-exp', 
         config: { 
@@ -160,67 +154,52 @@ const App: React.FC = () => {
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } }
         } 
       });
-      
-      // שמירה ברפרנס רק אחרי שהחיבור הצליח
       activeSessionRef.current = session;
-      
+
       const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
-      const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
+      const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
       
       scriptProcessor.onaudioprocess = (e) => {
           const inputData = e.inputBuffer.getChannelData(0).slice();
           if (activeSessionRef.current) {
-              const pcmData = createPcmBlob(inputData);
-              // שליחה במבנה הנכון לגוגל: אובייקט בודד עם mimeType ו-data
-              activeSessionRef.current.sendRealtimeInput([{
-                  mimeType: "audio/pcm;rate=16000",
-                  data: pcmData
-              }]);
+              const pcmDataBase64 = createPcmBlob(inputData);
+              // תיקון המבנה: שימוש ב-media.data כפי שנדרש ב-Live API
+              activeSessionRef.current.sendRealtimeInput({
+                  media: { data: pcmDataBase64, mimeType: "audio/pcm;rate=16000" }
+              });
           }
       };
-      
       source.connect(scriptProcessor); 
       scriptProcessor.connect(inputAudioContextRef.current!.destination);
 
-      // לולאת ההאזנה - עטופה ב-try/catch כדי לא לקרוס
       (async () => {
           try {
-            // הוספת בדיקה ש-current קיים לפני ה-listen
-            if (!activeSessionRef.current) return;
-
             for await (const msg of activeSessionRef.current.listen()) {
                 const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                 if (audioData) {
                     setIsSpeaking(true);
                     nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
                     const buffer = await decodeAudioData(decode(audioData), outputCtx, 24000, 1);
-                    
                     const audioSource = outputCtx.createBufferSource();
                     audioSource.buffer = buffer; 
                     audioSource.connect(outputNode);
-                    
                     audioSource.onended = () => { 
                         sourcesRef.current.delete(audioSource); 
                         if (sourcesRef.current.size === 0) setIsSpeaking(false); 
                     };
-                    
                     audioSource.start(nextStartTimeRef.current);
                     nextStartTimeRef.current += buffer.duration; 
                     sourcesRef.current.add(audioSource);
                 }
             }
-          } catch(e) { 
-              console.error("Session loop terminated:", e);
-              // במקרה של ניתוק, מנסים לנקות
-              stopConversation();
-          }
+          } catch(e) { console.error("Listener error:", e); stopConversation(); }
       })();
 
       setStatus(ConnectionStatus.CONNECTED);
     } catch (e) { 
         console.error("Connection failed:", e);
         setStatus(ConnectionStatus.DISCONNECTED); 
-        alert("תקלה בהתחברות. ודא שהמיקרופון מחובר ומאושר."); 
+        alert("Connection failed. Please check microphone permissions."); 
     }
   };
 
@@ -255,7 +234,6 @@ const App: React.FC = () => {
                 <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-3 text-sm font-black outline-none w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
               </div>
             </div>
-            
             <div className="grid grid-cols-2 gap-3">
               {SCENARIOS.map(s => (
                 <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-slate-800/40 text-slate-500'}`}>
