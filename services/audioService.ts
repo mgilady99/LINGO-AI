@@ -1,3 +1,5 @@
+// src/services/audioService.ts
+
 export const decode = (base64: string): ArrayBuffer => {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -26,7 +28,6 @@ export const decodeAudioData = (
     const int16 = dataView.getInt16(i * 2, true); 
     channelData[i] = int16 / 32768.0;
   }
-
   return audioBuffer;
 };
 
@@ -39,8 +40,7 @@ export const createPcmBlob = (float32Array: Float32Array): string => {
   
   let binary = '';
   const bytes = new Uint8Array(int16Array.buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
+  for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
