@@ -1,7 +1,6 @@
-// src/App.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
-import { Mic, Headphones, ExternalLink, Settings, LogOut, ArrowLeftRight } from 'lucide-react';
+import { Mic, Headphones, ArrowLeftRight } from 'lucide-react';
 import { ConnectionStatus, SUPPORTED_LANGUAGES, SCENARIOS, Language, PracticeScenario } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './services/audioService';
 import Avatar from './components/Avatar';
@@ -27,7 +26,6 @@ const App: React.FC = () => {
 
   const stopConversation = useCallback(() => {
     if (activeSessionRef.current) { try { activeSessionRef.current.close(); } catch (e) {} activeSessionRef.current = null; }
-    // שחרור אקטיבי של המיקרופון כדי למנוע הודעת "בשימוש"
     if (micStreamRef.current) { 
       micStreamRef.current.getTracks().forEach(track => track.stop()); 
       micStreamRef.current = null; 
@@ -38,18 +36,18 @@ const App: React.FC = () => {
   }, []);
 
   const startConversation = async () => {
-    // 1. בדיקה אם המפתח קיים
+    // בדיקה 1: האם המפתח קיים פיזית בקוד?
     const apiKey = import.meta.env.VITE_API_KEY;
+    
     if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
-      alert("שגיאת מערכת: מפתח ה-API לא נמצא. וודא שהגדרת VITE_API_KEY ב-Cloudflare ובנית את האתר מחדש.");
+      alert("שגיאה באתר: מפתח ה-API לא הוזרק בבנייה. וודא שב-Cloudflare המשתנה נקרא VITE_API_KEY ובצע Retry Deployment.");
       return;
     }
     
     try {
-      stopConversation();
       setStatus(ConnectionStatus.CONNECTING);
       
-      // 2. פתיחת מיקרופון
+      // בדיקה 2: בקשת מיקרופון
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
 
@@ -63,6 +61,7 @@ const App: React.FC = () => {
         .replace(/SOURCE_LANG/g, nativeLang.name)
         .replace(/TARGET_LANG/g, targetLang.name);
 
+      // בדיקה 3: חיבור לגוגל
       const session = await ai.live.connect({
         model: "gemini-2.0-flash-exp",
         config: { 
@@ -117,8 +116,8 @@ const App: React.FC = () => {
       })();
       setStatus(ConnectionStatus.CONNECTED);
     } catch (e: any) { 
-        stopConversation(); // סגירת המיקרופון אם החיבור נכשל
-        alert(`שגיאת חיבור: ${e.message || "נכשל החיבור לגוגל"}`); 
+        stopConversation();
+        alert(`שגיאת חיבור: ${e.message || "נכשל החיבור לגוגל. בדוק את המפתח ב-AI Studio."}`);
     }
   };
 
