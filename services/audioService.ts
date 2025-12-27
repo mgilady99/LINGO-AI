@@ -1,6 +1,5 @@
 // src/services/audioService.ts
 
-// פענוח אודיו חוזר מה-AI (24kHz PCM)
 export const decode = (base64: string): ArrayBuffer => {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -15,23 +14,22 @@ export const decodeAudioData = (arrayBuffer: ArrayBuffer, audioCtx: AudioContext
   const buffer = audioCtx.createBuffer(1, int16Array.length, sampleRate);
   const channelData = buffer.getChannelData(0);
   for (let i = 0; i < int16Array.length; i++) {
-    channelData[i] = int16Array[i] / 32768.0; // המרה מ-int16 חזרה ל-float
+    channelData[i] = int16Array[i] / 32768.0; 
   }
   return buffer;
 };
 
-// המרת קול מהמיקרופון לפורמט שגוגל מבינה (16kHz PCM)
+// תיקון Resampling ל-16kHz כפי שהציע Grok
 export const createPcmBlob = (float32Array: Float32Array, inputSampleRate: number): string => {
   const targetSampleRate = 16000;
-  const compression = inputSampleRate / targetSampleRate;
-  const length = Math.floor(float32Array.length / compression);
-  const int16Array = new Int16Array(length);
+  const ratio = inputSampleRate / targetSampleRate;
+  const newLength = Math.floor(float32Array.length / ratio);
+  const int16Array = new Int16Array(newLength);
 
-  // Resampling פשוט ומהיר ל-16kHz
-  for (let i = 0; i < length; i++) {
-    const index = Math.floor(i * compression);
-    const s = Math.max(-1, Math.min(1, float32Array[index]));
-    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  for (let i = 0; i < newLength; i++) {
+    const offset = Math.floor(i * ratio);
+    const sample = Math.max(-1, Math.min(1, float32Array[offset]));
+    int16Array[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
   }
 
   const bytes = new Uint8Array(int16Array.buffer);
