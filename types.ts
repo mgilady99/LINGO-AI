@@ -1,3 +1,4 @@
+// src/types.ts
 export interface Language { code: string; name: string; flag: string; }
 export interface PracticeScenario { id: string; icon: string; title: string; systemInstruction: string; }
 export enum ConnectionStatus { DISCONNECTED = 'disconnected', CONNECTING = 'connecting', CONNECTED = 'connected', }
