@@ -36,18 +36,12 @@ const App: React.FC = () => {
   }, []);
 
   const startConversation = async () => {
-    // בדיקה 1: האם המפתח קיים פיזית בקוד?
     const apiKey = import.meta.env.VITE_API_KEY;
-    
-    if (!apiKey || apiKey === "undefined" || apiKey.length < 10) {
-      alert("שגיאה באתר: מפתח ה-API לא הוזרק בבנייה. וודא שב-Cloudflare המשתנה נקרא VITE_API_KEY ובצע Retry Deployment.");
-      return;
-    }
+    if (!apiKey || apiKey === "undefined") return alert("API Key missing. Check Cloudflare variables.");
     
     try {
+      stopConversation();
       setStatus(ConnectionStatus.CONNECTING);
-      
-      // בדיקה 2: בקשת מיקרופון
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
 
@@ -61,7 +55,6 @@ const App: React.FC = () => {
         .replace(/SOURCE_LANG/g, nativeLang.name)
         .replace(/TARGET_LANG/g, targetLang.name);
 
-      // בדיקה 3: חיבור לגוגל
       const session = await ai.live.connect({
         model: "gemini-2.0-flash-exp",
         config: { 
@@ -80,10 +73,7 @@ const App: React.FC = () => {
           const pcmData = createPcmBlob(e.inputBuffer.getChannelData(0));
           activeSessionRef.current.send({
             realtimeInput: {
-              mediaChunks: [{
-                data: pcmData,
-                mimeType: `audio/pcm;rate=${inputAudioContextRef.current?.sampleRate || 16000}`
-              }]
+              mediaChunks: [{ data: pcmData, mimeType: `audio/pcm;rate=${inputAudioContextRef.current?.sampleRate || 16000}` }]
             }
           });
         }
@@ -117,49 +107,49 @@ const App: React.FC = () => {
       setStatus(ConnectionStatus.CONNECTED);
     } catch (e: any) { 
         stopConversation();
-        alert(`שגיאת חיבור: ${e.message || "נכשל החיבור לגוגל. בדוק את המפתח ב-AI Studio."}`);
+        alert(`Connection failed: ${e.message || "Check permissions"}`); 
     }
   };
 
   return (
     <div className={`h-screen bg-slate-950 flex flex-col text-slate-200 overflow-hidden font-['Inter'] ${dir}`} dir={dir}>
-      <header className="p-2 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-xl shrink-0">
+      <header className="p-4 flex items-center justify-between bg-slate-900/60 border-b border-white/5 backdrop-blur-xl">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center shadow-lg"><Headphones size={12} /></div>
-          <span className="font-black text-[10px] uppercase tracking-tighter">LingoLive Pro</span>
+          <div className="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center shadow-lg shadow-indigo-500/20"><Headphones size={20} /></div>
+          <span className="font-black text-xl uppercase tracking-tighter">LingoLive Pro</span>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="w-full md:w-[350px] flex flex-col p-2 gap-2 bg-slate-900/30 border-r border-white/5 shadow-2xl overflow-y-auto">
-          <div className="bg-slate-900/90 rounded-2xl border border-white/10 p-2 flex flex-col gap-2">
-            <div className="bg-slate-800/40 p-1.5 rounded-xl border border-white/5">
-              <div className="flex items-center gap-1.5">
-                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-3 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
-                <ArrowLeftRight size={12} className="text-indigo-500 shrink-0" />
-                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-3 text-[10px] font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+        <div className="w-full md:w-[400px] flex flex-col p-4 gap-4 bg-slate-900/30 border-r border-white/5 shadow-2xl">
+          <div className="bg-slate-900/90 rounded-[2rem] border border-white/10 p-6 flex flex-col gap-4">
+            <div className="bg-slate-800/40 p-4 rounded-2xl border border-white/5">
+              <div className="flex items-center gap-3">
+                <select value={nativeLang.code} onChange={e => setNativeLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
+                <ArrowLeftRight size={20} className="text-indigo-500 shrink-0" />
+                <select value={targetLang.code} onChange={e => setTargetLang(SUPPORTED_LANGUAGES.find(l => l.code === e.target.value)!)} className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold w-full text-center">{SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}</select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
+            
+            <div className="grid grid-cols-2 gap-3">
               {SCENARIOS.map(s => (
-                <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-3 rounded-xl flex flex-col items-center gap-0.5 transition-all ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl' : 'bg-slate-800/40 text-slate-500'}`}>
-                  <span className="text-lg">{s.icon}</span>
-                  <span className="text-[9px] font-black uppercase text-center leading-tight">{t(s.title)}</span>
+                <button key={s.id} onClick={() => setSelectedScenario(s)} className={`py-6 rounded-3xl flex flex-col items-center gap-2 transition-all duration-300 ${selectedScenario.id === s.id ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 scale-105' : 'bg-slate-800/40 text-slate-500 hover:bg-slate-800/60'}`}>
+                  <span className="text-3xl">{s.icon}</span>
+                  <span className="text-xs font-black uppercase tracking-widest">{t(s.title)}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="flex flex-col items-center py-2 flex-1 justify-center relative min-h-[250px]">
-            <div className="scale-65 md:scale-75 -mt-4"><Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} /></div>
+          <div className="flex flex-col items-center py-4 flex-1 justify-center relative">
+            <Avatar state={status === ConnectionStatus.CONNECTED ? (isSpeaking ? 'speaking' : 'listening') : 'idle'} />
             <button 
               onClick={status === ConnectionStatus.CONNECTED ? stopConversation : startConversation} 
-              className={`mt-2 px-8 py-3 rounded-full font-black text-lg shadow-2xl flex items-center gap-2 active:scale-95 transition-all z-50 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500' : 'bg-indigo-600 shadow-indigo-500/40'}`}
+              className={`mt-8 px-12 py-5 rounded-full font-black text-2xl shadow-2xl flex items-center gap-4 transition-all active:scale-95 ${status === ConnectionStatus.CONNECTED ? 'bg-red-500' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/40'}`}
             >
-                <Mic size={20} /> 
-                {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
+                <Mic size={28} /> {status === ConnectionStatus.CONNECTED ? t('stop_conversation') : t('start_conversation')}
             </button>
-            {(isSpeaking || status === ConnectionStatus.CONNECTED) && <div className="absolute bottom-4 w-full px-10"><AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} /></div>}
+            {(isSpeaking || status === ConnectionStatus.CONNECTED) && <div className="absolute bottom-8 w-full px-12"><AudioVisualizer isActive={true} color={isSpeaking ? "#6366f1" : "#10b981"} /></div>}
           </div>
         </div>
       </main>
